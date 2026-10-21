@@ -200,11 +200,41 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ## 7. Immediate next steps
 
-1. Treat this document as the quick decision record. Use the historical definition document for detailed examples and provenance.
-2. Record Tauri 2 as the approved platform in the canonical architecture/decision documentation; mark React, TypeScript, Vite and native SQLite as recommendations pending technical verification.
-3. Build the persistence-first Tauri prototype from §4.3, including a real on-disk database, safe migration, backup export/import and early cross-platform checks.
-4. Once the foundation is validated, implement a tested vertical slice: **create a study area -> log a session -> persist it -> view history -> compute totals/streak**.
-5. Then implement timer durability/review, allocations, calendar, heatmap and dashboards in an order supported by tests and user value.
-6. After every delivery, separately record **implemented functionality**, **tests actually run**, and **remaining work**.
+### Stage 1 — Minimum repository preparation
 
-**Maintenance rule:** On each approved product or architectural decision, update the appropriate section and status. Never equate `APPROVED`, `RECOMMENDED` or `PLANNED` with `IMPLEMENTED` or `TESTED`.
+**Status:** PLANNED
+
+**Objective:** Establish the minimum documentation and repository configuration required for consistent development.
+
+1. Populate `AGENTS.md` with coding agent instructions, including project conventions, documentation precedence, architectural constraints, and testing requirements.
+2. Create a concise `README.md` describing the project's purpose, approved platform, current development status, and repository organization.
+3. Consolidate approved functional requirements into a canonical English specification under `docs/`, preserving historical references without treating obsolete technical decisions as binding.
+4. Review and finalize `.gitignore` rules for the intended Tauri application structure, including generated files, build artifacts, local databases, and sensitive material.
+
+**Completion criteria:** The repository contains sufficient documentation and configuration for a developer or coding agent to begin implementation without relying on previous conversations.
+
+### Stage 2 — Application foundation and persistence validation
+
+**Status:** PLANNED
+
+**Objective:** Establish a functional, durable, offline-first application foundation before implementing study features.
+
+1. Initialize Tauri 2 within `app/`, using React, TypeScript, and Vite as the recommended frontend stack, subject to technical validation.
+2. Implement native SQLite persistence outside browser-managed storage.
+3. Verify data durability across application closure, reopening, and device restarts.
+4. Implement and test database schema migrations without losing existing records.
+5. Implement consistent backup export and validated restoration, including safe rejection of invalid backups.
+6. Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
+7. Record actual test results, known limitations, and remaining platform-specific requirements.
+
+**Completion criteria:** The application launches without a manually managed server, operates offline, persists data reliably, and demonstrates safe migration and backup/restore behavior.
+
+### Next development milestone
+
+After Stage 2 passes its acceptance criteria, implement the first tested functional workflow:
+
+**Create a study area → record a study session → persist the record → display history → calculate study totals and streaks.**
+
+Subsequent features, including timer recovery, multi-area allocations, calendar views, heatmaps, and dashboards, should be implemented incrementally according to approved requirements.
+
+**Maintenance rule:** Update each stage as work progresses. Mark tasks as completed only after implementation and appropriate validation. Never equate `APPROVED`, `RECOMMENDED`, or `PLANNED` with `IMPLEMENTED` or `TESTED`.

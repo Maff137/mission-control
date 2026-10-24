@@ -36,16 +36,16 @@ Mission Control is being developed as an installable application using **Tauri 2
 
 The intended platforms are macOS, Windows, Linux, Android, and iOS, subject to compatibility testing and platform-specific requirements.
 
-The proposed technical stack includes:
+The implemented foundation uses:
 
 | Component | Technology | Status |
 |---|---|---|
 | Application framework | Tauri 2 | Approved |
 | Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
-| Native integration | Rust | Minimal Tauri entry point implemented |
-| Local database | SQLite via official Tauri SQL plugin | B2 persistence prototype |
+| Native integration | Rust | Tauri entry point and versioned SQLite migration registration implemented |
+| Local database | SQLite via official Tauri SQL plugin | B2 completed and validated on macOS ARM64 |
 
-Technical recommendations will be finalized through implementation and validation.
+Broader platform support and the production study schema still require implementation and validation.
 
 ## Development Status
 
@@ -53,7 +53,9 @@ Technical recommendations will be finalized through implementation and validatio
 
 The project is being rebuilt from scratch while preserving previously approved functional requirements.
 
-Current priorities include establishing the application foundation, validating native persistent storage, testing schema migrations, and verifying backup and restore capabilities.
+B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. Recorded automated verification passed 8 Vitest tests and 2 Rust tests.
+
+Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. Application upgrades, future migrations preserving records, backup/restore, and additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -61,7 +63,7 @@ No production-ready release or installation package is currently available.
 
 ```text
 mission-control/
-├── app/          # React/Vite frontend, smoke tests, and src-tauri/ native shell
+├── app/          # React/Vite frontend, persistence tests, and src-tauri/ native SQLite integration
 ├── docs/         # Project state and specifications
 ├── tests/        # Reserved for future repository-level tests
 ├── AGENTS.md     # Coding agent instructions
@@ -79,7 +81,7 @@ Stage B2 extends the native welcome screen with a temporary SQLite persistence t
 
 - Node.js 24 LTS and npm (validated with Node 24.21.0 and npm 11.19.0).
 - Stable Rust with Cargo; `rustup component add rustfmt clippy` for native quality checks (validated with Rust 1.99.1).
-- Platform dependencies from the [official Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). On macOS desktop, install Xcode Command Line Tools with `xcode-select --install`. Full Xcode is needed for iOS work, which is outside B1.
+- Platform dependencies from the [official Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). On macOS desktop, install Xcode Command Line Tools with `xcode-select --install`. Full Xcode is needed for iOS work, which remains outside the validated B2 scope.
 
 ### Development and validation
 
@@ -99,7 +101,9 @@ npm run rust:check     # Cargo check using Cargo.lock
 npm run rust:test      # Native SQLite migration/durability tests
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings
-npm run desktop:build -- -- --locked  # macOS .app bundle
+npm run desktop:build -- -- --locked  # Production macOS .app bundle
+# Isolated development .app bundle for native persistence checks:
+npm run tauri -- build --debug --config src-tauri/tauri.dev.conf.json --bundles app -- --locked
 ```
 
 `npm run dev` and `npm run preview` are frontend-only helpers. `npm run tauri -- <command>` exposes the native CLI. The desktop build command currently targets the validated macOS `.app` format; other platform packaging remains unverified. Lockfiles are committed for reproducible dependency resolution.
@@ -136,7 +140,7 @@ For current decisions, approved requirements, development priorities, and unreso
 
 - [Project State](docs/STATE.md)
 
-The project state document is the authoritative reference for the current development phase.
+The project state document is the authoritative reference for the current development phase. After every development task, agents must update and synchronize both `README.md` and `docs/STATE.md` before the final commit and push, review their consistency, and confirm both updates in the completion report. See [Agent Instructions](AGENTS.md) for the mandatory workflow.
 
 ---
 

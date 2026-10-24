@@ -30,7 +30,16 @@ Act as a senior software engineer responsible for delivering a functional, relia
 4. Follow the project's existing conventions when they are consistent with approved requirements. Do not invent commands, configuration, or completed functionality.
 5. Add or update proportionate tests, including failures, boundary cases, persistence, and regressions when relevant.
 6. Run the applicable available checks. Do not claim a command or test succeeded unless it actually ran successfully. Report checks that could not run and why.
-7. Update `docs/STATE.md` when a milestone, implementation status, approved decision, or material limitation changes. Update other documentation when its contents are affected. Never mark a requirement as implemented or tested without evidence.
+7. Complete the mandatory documentation synchronization below before the final commit and push; documentation is part of task completion.
+
+## Mandatory documentation synchronization
+
+- After every completed development task, agents MUST review, synchronize, and update BOTH `docs/STATE.md` and `README.md`, even without an explicit user request. This covers features, fixes, refactors, tests, architecture, dependencies, configuration, documentation, and all repository changes.
+- Both must receive meaningful, factual task updates; avoid artificial edits or repetition.
+- Keep `docs/STATE.md` accurate about implementation status, decisions, milestones, verification results, limitations, and pending work.
+- Keep `README.md` aligned with the actual application: architecture, supported features, setup, development commands, and current project status. Keep history in `docs/STATE.md`.
+- Never describe planned, incomplete, or unverified functionality as completed, or report tests as passed unless they actually ran successfully.
+- Update both documents before the final commit and push, and inspect the final documentation diff for consistency. This is mandatory, not optional cleanup; never omit it to save time or tokens.
 
 ## Git branch policy
 
@@ -78,3 +87,4 @@ Respond in Brazilian Portuguese with a brief summary covering:
 2. **Validation:** Commands/tests run and their actual results.
 3. **Git:** Branch, commit(s), and push status; include the relevant remote branch or pull request link when available.
 4. **Pending:** Known limitations, blockers, or next steps.
+5. **Documentation:** Explicitly confirm that BOTH `README.md` and `docs/STATE.md` were updated and synchronized.

@@ -27,7 +27,7 @@
 - **RECOMMENDED:** React + TypeScript + Vite for the interface, Tauri's Rust layer for native operations, and SQLite for local persistence. Validate compatibility and durable storage before treating this implementation as established.
 - **OPEN:** Exact supported OS versions, installers, final study schema and future migrations, backup format, cross-platform test matrix and release process.
 - **VERIFIED (2026-10-24):** Stage B2 adds native SQLite test-record persistence, transactional initialization, isolated dev storage, and packaged-app quit/reopen verification in both environments. See B2 results below; the wider foundation gate is still open.
-- **HISTORICAL B1 VALIDATION (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. No persistence or study features are implemented.
+- **HISTORICAL B1 VALIDATION (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. At the B1 milestone, no persistence or study features were implemented; B2 adds persistence as described below.
 - **OBSERVED (2026-10-20):** The new GitHub repository had an empty `README.md` and no `STATE.md` on `main` before this document was drafted. No working features were verified in the new repository.
 
 ## 2. Preserved functional requirements
@@ -171,7 +171,7 @@ Before investing in the final dashboard, build a minimal Tauri prototype that:
 5. Exports a consistent backup and successfully restores it; rejects invalid imports safely.
 6. Verifies platform-specific persistence and build viability, including an early mobile test.
 
-**Status:** These checks are acceptance criteria for the foundation, **not completed tests**.
+**Status:** PARTIALLY VERIFIED on macOS ARM64 through B1/B2: packaged launch, native SQLite creation/read, and app quit/reopen persistence passed. Initial migration, repeated initialization, and failed-migration rollback were tested. Device restart, application upgrades with later migrations, backup/restore, and other platforms remain pending; the full gate has not passed.
 
 **Historical, not binding:** The previous implementation was associated with the `backend365days` repository, `projects/backend365-mission-control`, branch `feature/mission-control-foundation`, Python 3.14.6 and FastAPI 0.141.1. The old FastAPI server, localhost workflow, HTML templates and former SQLite setup must not be reused automatically. This is not evidence of currently implemented functionality.
 
@@ -218,23 +218,23 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ### Stage 2 — Application foundation and persistence validation
 
-**Status:** IN PROGRESS — B1 application shell implemented; persistence and the remaining architectural gate are not completed.
+**Status:** IN PROGRESS — B1 completed and integrated into `main`; B2 native SQLite persistence completed and validated on macOS ARM64. The remaining architectural verification gate is pending; Stage 2 is not complete.
 
 **Objective:** Establish a functional, durable, offline-first application foundation before implementing study features.
 
 1. **COMPLETED (B1, macOS ARM64):** Initialize Tauri 2 within `app/` using React, TypeScript, and Vite. See verified scope below.
-2. Implement native SQLite persistence outside browser-managed storage.
-3. Verify data durability across application closure, reopening, and device restarts.
-4. Implement and test database schema migrations without losing existing records.
-5. Implement consistent backup export and validated restoration, including safe rejection of invalid backups.
-6. Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
-7. Record actual test results, known limitations, and remaining platform-specific requirements.
+2. **COMPLETED (B2, macOS ARM64):** Implement native SQLite persistence outside browser-managed storage, with separate development and production databases.
+3. **PARTIALLY VERIFIED:** Both bundles preserved records across closure/reopening; the user independently confirmed save/close/reopen persistence. Full device restart remains untested.
+4. **PARTIALLY VERIFIED:** Rust-registered initial migration, repeated initialization, and failed-migration rollback passed automated checks. Application upgrades and future migrations preserving existing records remain pending.
+5. **PENDING:** Implement consistent backup export and validated restoration, including safe rejection of invalid backups.
+6. **PENDING:** Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
+7. **ONGOING:** Record actual test results, known limitations, and remaining platform-specific requirements; B2 results are recorded below.
 
 **Completion criteria:** The application launches without a manually managed server, operates offline, persists data reliably, and demonstrates safe migration and backup/restore behavior.
 
 ### Stage B1 — Minimal application foundation
 
-**Status:** IMPLEMENTED AND BUILD-VERIFIED on macOS ARM64 (2026-10-24). Other platforms remain unverified.
+**Status:** COMPLETED AND INTEGRATED INTO `main`; implemented and build-verified on macOS ARM64 (2026-10-24). Other platforms remain unverified.
 
 - Generated using the official `create-tauri-app` React/TypeScript template, then removed demo commands, unused frontend assets, opener integration, and unnecessary runtime dependencies. Source icons remain template placeholders.
 - Added a single native `main` window titled **Mission Control**, a static English welcome screen with a yellow accent, a local-assets content security policy, and no frontend native-command permissions.
@@ -249,14 +249,14 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - `npm run check`: passed TypeScript and two smoke tests (server-rendered identity and native window/bundled-assets configuration).
 - `npm run build`: passed; Vite production assets generated.
 - `npm run rust:check`: passed with `--locked`.
-- `npm run rust:test`: passed; the Rust test harness currently contains **zero native tests**.
+- `npm run rust:test`: passed; the B1 Rust test harness contained **zero native tests** (B2 adds two).
 - `cargo fmt --manifest-path src-tauri/Cargo.toml --check`: passed.
 - `cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings`: passed.
 - `npm run desktop:build -- -- --locked`: passed; generated `Mission Control.app` for macOS ARM64.
 - `npm run desktop:dev`: Vite started and Cargo compiled/launched the native executable. The UI automation tool could not select the unbundled development process; its rendering was not visually verified.
 - Packaged application: opened the `.app` with the Vite process stopped; accessibility inspection showed the Mission Control heading at `tauri://localhost`, and a screenshot confirmed the styled welcome screen. Closed the package after verification. This verifies embedded assets without a development server, not a disconnected-network test.
 
-**Limitations:** Local development bundle only; distribution signing/notarization, custom icons, end-to-end WebView automation, Windows/Linux/mobile builds, and supported OS minimums remain unverified. No SQLite, schemas, migrations, backup/restore, durable user data, or study workflows were added. The wider Stage 2 architectural gate remains open.
+**Limitations:** Local development bundle only; distribution signing/notarization, custom icons, end-to-end WebView automation, Windows/Linux/mobile builds, and supported OS minimums remain unverified. B1 added no SQLite, schemas, migrations, backup/restore, durable user data, or study workflows; B2 supersedes the persistence limitation. The wider Stage 2 architectural gate remains open.
 
 ### Stage B2 — Native SQLite persistence prototype
 
@@ -286,6 +286,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - `npm run desktop:dev` compiled and launched with the dev override; Vite was stopped before bundled checks. The automation tool could not select the unbundled dev process, so an independently packaged debug bundle with the same override was used for UI checks.
 - Both packaged applications automatically created their databases and initially displayed the empty state. Save was disabled for an empty input. Entered distinct synthetic test values, clicked Save, observed success and immediate record display in each environment.
 - Actually quit each bundle with Command-Q, reopened it, and observed its own saved record loaded automatically with the same creation timestamp. Production and dev records remained isolated. No development server was running during either bundled check.
+- **USER-CONFIRMED:** The user independently saved a record, closed the application, reopened it, and confirmed the record remained available. This was an application restart, not a full device restart; the user has not tested persistence across a device restart.
 - Read-only inspection of both physical SQLite files confirmed the separate records, successful migration version 1 and `PRAGMA integrity_check = ok`. Synthetic records remain in native application storage and are not committed.
 
 **Limitations / next work:** Device reboot, application upgrades and later migration versions, backup/restore, disk corruption/permission fault injection in the UI, clearing WebView data, signed distribution and non-macOS platforms remain unverified. Error propagation is tested automatically, but native initialization failures have not been manually injected. The interface is temporary and duplicate text is allowed intentionally; the guard prevents simultaneous submissions, not repeated intentional saves. The broader Stage 2 gate remains open. Next foundation work should validate compatible upgrades, backups/restores and platform viability before production study workflows; no next-stage implementation is included in B2.
@@ -298,4 +299,10 @@ After Stage 2 passes its acceptance criteria, implement the first tested functio
 
 Subsequent features, including timer recovery, multi-area allocations, calendar views, heatmaps, and dashboards, should be implemented incrementally according to approved requirements.
 
-**Maintenance rule:** Update each stage as work progresses. Mark tasks as completed only after implementation and appropriate validation. Never equate `APPROVED`, `RECOMMENDED`, or `PLANNED` with `IMPLEMENTED` or `TESTED`.
+### Documentation synchronization policy (2026-10-24)
+
+**APPROVED / DOCUMENTED:** `AGENTS.md` now requires meaningful updates to both this document and `README.md` after every development task, before the final commit and push, with a final consistency review and explicit confirmation in the completion report. This includes documentation-only work and applies even without a user request.
+
+**Verification for this documentation task:** Reviewed all three documents against the B2 implementation, npm scripts, Rust migration/tests, and development configuration. Preserved the recorded B2 results (8 Vitest and 2 Rust tests passed); application tests and manual persistence checks were not rerun for this documentation-only change. The user-confirmed app restart check is recorded separately from implementation validation; device restart remains unverified. Documentation checks: `git diff --check` passed, the complete diff was reviewed for consistency and documentation-only scope, and `AGENTS.md` was verified below the 8,000-character limit.
+
+**Maintenance rule:** Update both `docs/STATE.md` and `README.md` after every development task, before the final commit and push. Update each stage as work progresses. Mark tasks as completed only after implementation and appropriate validation. Never equate `APPROVED`, `RECOMMENDED`, or `PLANNED` with `IMPLEMENTED` or `TESTED`.

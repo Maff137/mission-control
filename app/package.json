@@ -11,23 +11,24 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run typecheck && npm test",
-    "desktop:dev": "tauri dev",
+    "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "desktop:build": "tauri build --bundles app",
     "rust:check": "cargo check --manifest-path src-tauri/Cargo.toml --locked",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --locked"
   },
   "dependencies": {
+    "@tauri-apps/plugin-sql": "^2.6.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
-    "@tauri-apps/cli": "^2",
-    "@types/node": "^24.0.0",
     "vitest": "^4.0.0"
   }
 }

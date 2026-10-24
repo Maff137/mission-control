@@ -5,5 +5,9 @@
   "windows": [
     "main"
   ],
-  "permissions": []
+  "permissions": [
+    "sql:allow-load",
+    "sql:allow-select",
+    "sql:allow-execute"
+  ]
 }

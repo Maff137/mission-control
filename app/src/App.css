@@ -37,3 +37,16 @@ p {
   line-height: 1.6;
   color: #c5c6ca;
 }
+
+section { margin-top: 24px; max-width: 640px; }
+h2 { font-size: 1.2rem; }
+label { display: block; margin-bottom: 8px; }
+.record-input { display: flex; gap: 12px; }
+input { min-width: 0; flex: 1; background: #242529; color: inherit; border: 1px solid #777; border-radius: 6px; padding: 10px; font: inherit; }
+button { background: #f4d35e; color: #18191c; border: 0; border-radius: 6px; padding: 10px 18px; font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+input:focus-visible, button:focus-visible { outline: 2px solid #f4d35e; outline-offset: 3px; }
+ul { padding: 0; list-style: none; }
+li { border-top: 1px solid #444; padding: 12px 0; overflow-wrap: anywhere; }
+time { display: block; color: #c5c6ca; font-size: .8rem; margin-top: 4px; }
+[role="alert"] p { color: #ffb4ab; }

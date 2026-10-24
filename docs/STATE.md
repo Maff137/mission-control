@@ -1,7 +1,7 @@
 # Mission Control — Project State
 
 **Last updated:** 2026-10-24\
-**Phase:** Stage B1 application foundation implemented on macOS; storage and cross-platform validation pending.
+**Phase:** Stage B2 native SQLite persistence implemented and validated on macOS; wider architectural gate pending.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -25,8 +25,9 @@
 - **APPROVED:** No user-managed server, terminal command, localhost URL, cloud account or internet connection is required for normal use after installation.
 - **APPROVED:** Target desktop and mobile devices, accepting practical minimum OS/WebView versions and platform-specific packaging; simultaneous cross-device synchronization is not a current priority.
 - **RECOMMENDED:** React + TypeScript + Vite for the interface, Tauri's Rust layer for native operations, and SQLite for local persistence. Validate compatibility and durable storage before treating this implementation as established.
-- **OPEN:** Exact supported OS versions, installers, native persistence integration, complete schema and migration strategy, backup format, test matrix and release process.
-- **VERIFIED (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. No persistence or study features are implemented.
+- **OPEN:** Exact supported OS versions, installers, final study schema and future migrations, backup format, cross-platform test matrix and release process.
+- **VERIFIED (2026-10-24):** Stage B2 adds native SQLite test-record persistence, transactional initialization, isolated dev storage, and packaged-app quit/reopen verification in both environments. See B2 results below; the wider foundation gate is still open.
+- **HISTORICAL B1 VALIDATION (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. No persistence or study features are implemented.
 - **OBSERVED (2026-10-20):** The new GitHub repository had an empty `README.md` and no `STATE.md` on `main` before this document was drafted. No working features were verified in the new repository.
 
 ## 2. Preserved functional requirements
@@ -133,7 +134,7 @@
 | User experience | **APPROVED** — launch from an application icon; no terminal, manual server startup, localhost address, login or mandatory cloud account. |
 | Runtime | **APPROVED** — fully functional offline after installation; no required backend service or remote database for core functionality. |
 | Data ownership | **APPROVED** — user records reside in native application-controlled files on the user's device, not in browser-managed site data, localStorage, IndexedDB or a WebView cache. |
-| Database | **RECOMMENDED** — native SQLite, with the exact Tauri integration, platform support and migration mechanism to be verified in a technical prototype. |
+| Database | **APPROVED / IMPLEMENTED (B2)** — native SQLite through the official Tauri SQL plugin; versioned transactional migrations, verified on macOS. Other platforms remain unverified. |
 | UI stack | **RECOMMENDED** — React, TypeScript and Vite; native operations through Tauri/Rust. Final dependency choices and module boundaries are **OPEN**. |
 | Data durability | **APPROVED** — data should survive app closure, device restart, inactivity, browser cache/history clearing and correctly implemented app updates. Uninstallation may remove private app data; backups mitigate this and other loss scenarios. |
 | Backup and restore | **APPROVED DIRECTION** — portable, user-controlled export/import with validation and consistent snapshots. File format, retention and automatic backup policy are **OPEN**. |
@@ -148,7 +149,8 @@
 - **APPROVED:** Preserve user data across normal application updates through compatible migrations and robust failure handling; never silently reset a database after a schema or startup error.
 - **APPROVED DIRECTION:** Provide portable backup export and validated restore, keeping stored data independent of a single installation when the user explicitly exports it.
 - **PLANNED:** Design stable record IDs and versioned export metadata so future manual transfer or merging remains feasible without implementing sync now.
-- **OPEN:** The SQLite binding/plugin or Rust database layer, on-disk location per OS, schema versioning, transactional backup method, import conflict strategy, backup encryption and sensitive-data protection.
+- **IMPLEMENTED (B2):** Official Tauri SQL plugin, native app configuration storage and versioned transactional migrations; macOS physical paths verified.
+- **OPEN:** Other OS storage paths, final study schema, transactional backup method, import conflict strategy, backup encryption and sensitive-data protection.
 - **LIMITATION:** Native application storage is independent of browser eviction but not immune to disk failure, corruption, user deletion, OS cleanup or mobile app uninstallation. Backups remain necessary.
 
 ### 4.2. Cross-platform implementation policy
@@ -194,7 +196,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 6. Goals model and progress logic.
 7. Navigation, final layout, color palette beyond yellow and exact heatmap scale.
 8. Text constraints and more detailed note/topic modeling.
-9. Exact native SQLite integration and compatibility of Tauri plugins on each target platform.
+9. Compatibility of the selected Tauri SQL plugin on platforms beyond macOS.
 10. Minimum supported OS versions, release order, installers and signing/distribution.
 11. Backup file format, validation rules, restoration semantics and optional encryption.
 12. Priorities for the first functional release after the persistence prototype passes.
@@ -255,6 +257,38 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - Packaged application: opened the `.app` with the Vite process stopped; accessibility inspection showed the Mission Control heading at `tauri://localhost`, and a screenshot confirmed the styled welcome screen. Closed the package after verification. This verifies embedded assets without a development server, not a disconnected-network test.
 
 **Limitations:** Local development bundle only; distribution signing/notarization, custom icons, end-to-end WebView automation, Windows/Linux/mobile builds, and supported OS minimums remain unverified. No SQLite, schemas, migrations, backup/restore, durable user data, or study workflows were added. The wider Stage 2 architectural gate remains open.
+
+### Stage B2 — Native SQLite persistence prototype
+
+**Status:** IMPLEMENTED AND VERIFIED on macOS ARM64 (2026-10-24); no production study schema or workflows.
+
+- **APPROVED / IMPLEMENTED:** Official `tauri-plugin-sql` 2.6.0 with SQLite and `@tauri-apps/plugin-sql`, connection `sqlite:mission-control.db`. No external server, account, browser storage, or runtime network dependency.
+- Rust registers native migration version 1 from `app/src-tauri/migrations/0001_persistence_test_records.sql`. The plugin applies transactional SQLx migrations on load and tracks versions in `_sqlx_migrations`. Schema creation stays outside React. No automatic reset, replacement, deletion, or seeding is implemented.
+- Minimal table: UUID text primary key, required non-empty text with a database constraint, UTC creation timestamp generated by SQLite. Stable read order is creation timestamp then ID.
+- Typed TypeScript module shares initialization, binds insert parameters, validates trimmed values, propagates errors and blocks concurrent writes. Temporary welcome-screen form loads records automatically and shows loading, empty, success and error states, with a load retry action. A read failure after a successful save retains the success message and clears the input to discourage a duplicate write.
+- Only `sql:allow-load`, `sql:allow-select`, and `sql:allow-execute` are enabled for the main window. These plugin permissions permit those SQL operations generally; they are not table-level restrictions.
+- **Physical paths verified by read-only SQLite inspection:** `/Users/maff137/Library/Application Support/com.missioncontrol.desktop/mission-control.db` (production) and `/Users/maff137/Library/Application Support/com.missioncontrol.desktop.dev/mission-control.db` (development). Portable form: `~/Library/Application Support/<identifier>/mission-control.db`. The plugin source resolves `app_config_dir()`. Both files are outside the repository and browser-managed storage.
+- Production identifier remains `com.missioncontrol.desktop`. `npm run desktop:dev` explicitly uses `tauri.dev.conf.json` with identifier `com.missioncontrol.desktop.dev`; production builds use the base config. Direct `tauri dev` without the override would use production storage.
+
+**Automated validation (actual results):**
+
+- `npm run check`: TypeScript and 8 Vitest tests passed. Covers initialization sharing/retry, parameter binding, whitespace rejection, concurrent-write guard, write/read errors, identity and capability configuration.
+- `npm run build`: passed, including TypeScript and Vite production build.
+- `npm run rust:check`: passed with locked dependencies after downloading crates outside the network-restricted sandbox.
+- `npm run rust:test`: 2 Rust tests passed. Real SQLite test creates a temporary file, applies the migration, writes, rejects invalid SQL/blank values, closes/reopens, reapplies the migrator and confirms exactly one unchanged record and timestamp. Another test confirms a failed migration rolls back partial schema changes while preserving existing data. Tests use the same SQLx migration engine and SQL file as the plugin; they do not exercise WebView IPC.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check`: passed.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings` and the additional `--all-targets` check: passed.
+- `npm run desktop:build -- -- --locked`: passed; production macOS ARM64 `.app` generated.
+- `npm run tauri -- build --debug --config src-tauri/tauri.dev.conf.json --bundles app -- --locked`: passed; isolated development `.app` generated.
+
+**Manual/native checks (actual results):**
+
+- `npm run desktop:dev` compiled and launched with the dev override; Vite was stopped before bundled checks. The automation tool could not select the unbundled dev process, so an independently packaged debug bundle with the same override was used for UI checks.
+- Both packaged applications automatically created their databases and initially displayed the empty state. Save was disabled for an empty input. Entered distinct synthetic test values, clicked Save, observed success and immediate record display in each environment.
+- Actually quit each bundle with Command-Q, reopened it, and observed its own saved record loaded automatically with the same creation timestamp. Production and dev records remained isolated. No development server was running during either bundled check.
+- Read-only inspection of both physical SQLite files confirmed the separate records, successful migration version 1 and `PRAGMA integrity_check = ok`. Synthetic records remain in native application storage and are not committed.
+
+**Limitations / next work:** Device reboot, application upgrades and later migration versions, backup/restore, disk corruption/permission fault injection in the UI, clearing WebView data, signed distribution and non-macOS platforms remain unverified. Error propagation is tested automatically, but native initialization failures have not been manually injected. The interface is temporary and duplicate text is allowed intentionally; the guard prevents simultaneous submissions, not repeated intentional saves. The broader Stage 2 gate remains open. Next foundation work should validate compatible upgrades, backups/restores and platform viability before production study workflows; no next-stage implementation is included in B2.
 
 ### Next development milestone
 

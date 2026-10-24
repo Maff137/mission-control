@@ -43,7 +43,7 @@ The proposed technical stack includes:
 | Application framework | Tauri 2 | Approved |
 | Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
 | Native integration | Rust | Minimal Tauri entry point implemented |
-| Local database | SQLite | Recommended |
+| Local database | SQLite via official Tauri SQL plugin | B2 persistence prototype |
 
 Technical recommendations will be finalized through implementation and validation.
 
@@ -73,7 +73,7 @@ The structure will evolve as implementation progresses.
 
 ## Getting Started
 
-Stage B1 provides a minimal native window with a static Mission Control welcome screen. Study features and persistence are not implemented.
+Stage B2 extends the native welcome screen with a temporary SQLite persistence test. Study features are not implemented.
 
 ### Prerequisites
 
@@ -93,10 +93,10 @@ npm run desktop:dev
 The Tauri CLI starts and stops the Vite development server automatically. Development uses localhost; the packaged application embeds the built frontend and does not require Node, a user-managed server, an account, or network access during normal use.
 
 ```sh
-npm run check          # TypeScript and two smoke tests
+npm run check          # TypeScript and Vitest tests
 npm run build          # Frontend production assets
 npm run rust:check     # Cargo check using Cargo.lock
-npm run rust:test      # Rust test harness (no native unit tests yet)
+npm run rust:test      # Native SQLite migration/durability tests
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings
 npm run desktop:build -- -- --locked  # macOS .app bundle
@@ -106,7 +106,29 @@ npm run desktop:build -- -- --locked  # macOS .app bundle
 
 The macOS bundle is generated at `app/src-tauri/target/release/bundle/macos/Mission Control.app`. Open it through Finder, or copy it to Applications for local use. This is a local development bundle, not a signed/notarized distribution release. Template icons remain placeholders.
 
-Smoke tests check server-rendered application identity and the bundled-assets/window configuration. Native launch and packaged rendering require a desktop smoke check; these tests are not end-to-end WebView automation. See [Project State](docs/STATE.md) for actual results and limitations.
+Automated tests cover the TypeScript persistence boundary, native SQLite migration rollback and file reopen, and server-rendered application identity and the bundled-assets/window configuration. Native launch and packaged rendering require a desktop smoke check; these tests are not end-to-end WebView automation. See [Project State](docs/STATE.md) for actual results and limitations.
+
+## SQLite persistence prototype
+
+The official `tauri-plugin-sql` (SQLite feature) and `@tauri-apps/plugin-sql` use `sqlite:mission-control.db`. Rust registers migration version 1 from `app/src-tauri/migrations/`; `Database.load` applies it through the plugin's transactional SQLx migrator. Initialization does not seed, delete, replace, or reset records. Errors are displayed in the test interface. SQL lives in a typed persistence module, with parameter binding and a concurrent-write guard.
+
+On macOS the plugin resolves the native application configuration directory under `~/Library/Application Support/`:
+
+- Production: `com.missioncontrol.desktop/mission-control.db`.
+- Development: `com.missioncontrol.desktop.dev/mission-control.db`.
+
+`npm run desktop:dev` explicitly loads `src-tauri/tauri.dev.conf.json`, separating development storage without changing the production identifier. Plain `tauri dev` does not load that override; use the npm command. Production packaging uses the base configuration. Permissions enable only SQL load, select, and execute. There is no browser-storage fallback.
+
+### Manual macOS durability check
+
+1. Run `npm run desktop:build -- -- --locked` from `app/`.
+2. With the development server stopped, open `app/src-tauri/target/release/bundle/macos/Mission Control.app` through Finder.
+3. Enter a recognizable test value, click **Save**, and confirm the success message and saved record. Blank input must keep Save disabled.
+4. Quit with Command-Q, reopen the same bundle, and confirm the record appears automatically.
+5. In Finder, use **Go → Go to Folder** for `~/Library/Application Support/com.missioncontrol.desktop/`. Confirm `mission-control.db` is outside the repository. Do not delete it to recover from errors.
+6. Repeat using `npm run desktop:dev` with a different value; production and development records should be separate. Stop development, then reopen the production bundle to confirm isolation.
+
+This is a temporary persistence prototype, not the final study schema. Device reboot, upgrades, backup/restore, signing, and other platforms require later validation.
 
 ## Documentation
 

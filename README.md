@@ -64,7 +64,7 @@ mission-control/
 ├── app/          # Application source (pending initialization)
 ├── docs/         # Project state and specifications
 ├── tests/        # Test suite (pending implementation)
-├── AGENTS.md     # Coding agent instructions (pending)
+├── AGENTS.md     # Coding agent instructions
 ├── .gitignore
 └── README.md
 ```

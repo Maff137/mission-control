@@ -1,6 +1,6 @@
 # Mission Control — Project State
 
-**Last updated:** 2026-10-20  
+**Last updated:** 2026-10-24\
 **Phase:** Rebuild from scratch; Tauri 2 approved; storage implementation and cross-platform support pending validation.  
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
@@ -202,12 +202,12 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ### Stage 1 — Minimum repository preparation
 
-**Status:** PLANNED
+**Status:** IN PROGRESS — agent instructions and README completed; canonical specification and final `.gitignore` review pending.
 
 **Objective:** Establish the minimum documentation and repository configuration required for consistent development.
 
-1. Populate `AGENTS.md` with coding agent instructions, including project conventions, documentation precedence, architectural constraints, and testing requirements.
-2. Create a concise `README.md` describing the project's purpose, approved platform, current development status, and repository organization.
+1. **COMPLETED:** Populate `AGENTS.md` with coding agent instructions, including project conventions, documentation precedence, architectural constraints, and testing requirements.
+2. **COMPLETED:** Create a concise `README.md` describing the project's purpose, approved platform, current development status, and repository organization.
 3. Consolidate approved functional requirements into a canonical English specification under `docs/`, preserving historical references without treating obsolete technical decisions as binding.
 4. Review and finalize `.gitignore` rules for the intended Tauri application structure, including generated files, build artifacts, local databases, and sensitive material.
 

@@ -1,6 +1,6 @@
 # B5 — Integration and resilience evidence
 
-Date: 2026-10-24. Status: **PARTIALLY VERIFIED**. Automated macOS scope and the native checks below passed. Device reboot, power loss, other platforms and the remaining environmental acceptance checks are not verified. Stage 2 remains open.
+Date: 2026-10-24. Status: **PARTIALLY VERIFIED**. Automated macOS scope and the native checks below passed. The native M3/M4/M6 follow-up below verifies additional macOS acceptance scenarios. Device reboot, power loss and other platforms remain unverified. Stage 2 remains open.
 
 ## Environment and isolation
 
@@ -103,7 +103,7 @@ Closed snapshot inspection used Python's standard library. Confirm process exit 
 
 `lsof` on the killed process confirmed the dedicated B5 DB and excluded normal production/development DB paths. `ps` required sandbox approval. Native test bundles, snapshots, backup, detached worktrees and synthetic storage were retained outside Git. No raw data, logs, bundles or machine-specific override files are committed.
 
-## Remaining acceptance and environmental checks
+## Remaining acceptance at the initial B5 pass (historical)
 
 | ID | Procedure required | Expected | Actual / status and limit |
 |---|---|---|---|
@@ -115,3 +115,123 @@ Closed snapshot inspection used Python's standard library. Confirm process exit 
 | M6 startup error UX and WebView data clearing | Dedicated app: inject startup failure and inspect user-visible presentation; clear only dedicated WebView data and reopen | Actionable startup guidance; native data intact | **NOT TESTED**; native startup stderr rejection passed, not an error-dialog UX check |
 
 B5's automated scope is reproducible and passed. B5 and Stage 2 are not declared fully complete while these acceptance/environmental gaps remain. Existing recovery-retention, plaintext-backup and platform limitations remain unchanged.
+
+## Native acceptance follow-up — M3, M4 and M6
+
+Date: 2026-10-24. **M3 tested native scenarios PASS; M4 eight packaged boundaries PASS; M6 PASS. B5 remains PARTIALLY VERIFIED and Stage 2 remains OPEN.** M1 is being conducted independently by the user; no reboot evidence was supplied. M2 and M5 were not attempted.
+
+### Environment, base and safety
+
+Actual environment rechecked: macOS 27.0.1 (26A434), ARM64, Node 24.21.0, npm 11.19.0, Rust 1.99.1. Locked dependencies and applied migrations remain unchanged. A successful fetch left `origin/main` at B4 `dce2b2f` and the B5 branch at `e2004f5`. B5 was not integrated; the requested clean branch `test/b5-native-acceptance` was created from `e2004f5`, preserving B5 without merging it into main.
+
+Only these disposable identifiers were used:
+
+- `com.missioncontrol.acceptance.b5native20261024a`: first successful eight-boundary run, native UI, M3 volume tests and M6.
+- `com.missioncontrol.acceptance.b5native20261024b`: complete final-code eight-boundary run with stronger marker/displacement assertions.
+
+The production release bundle was built but never launched. Normal production/development databases were never opened or modified. No OS reboot/shutdown, global browser clearing, user security-setting change, host-disk filling, or unrelated process termination occurred. HOME was not overridden, and symlinks were not used as isolation. Temporary native permissions were restored. The APFS image was detached after verification. Synthetic files, cache quarantine, recovery copies and logs remain outside Git.
+
+### Correction and instrumentation
+
+The former startup chain propagated storage/SQL errors into `.expect`, with no actionable application window. The correction keeps the existing recovery → SQL preload/migrations → startup acknowledgement order, dynamically registers the same SQL plugin inside controlled initialization, and creates the ordinary WebView only after success. A failure opens the separate bundled `startup-error.html` window. It explains preservation, permissions, capacity and reopen steps, and includes the underlying error. Details are JSON-serialized into a native initialization script and assigned using `textContent`, never interpreted as HTML. The page has no external resources or application frontend scripts and uses restrictive CSP. No failure path deletes or resets the user's database. SQL error guidance also now addresses write failures rather than suggesting only backup selection.
+
+A first attempted asynchronous startup dialog did not provide a stable visible error surface. A persistent dedicated error window replaced it; its guidance and actual details were verified through macOS accessibility and screenshot inspection. A native-only owner-window attempt did not compile because Tauri's WindowBuilder is private; no dependency or unstable Tauri feature was added.
+
+`native-acceptance` is an opt-in debug-only Cargo feature. It prints the actual Tauri native storage path, rejects normal identifiers and a symlink storage root, and provides bounded 60-second synchronization at eight named boundaries. The controller waits for a flushed path/boundary signal (25-second deadline), SIGKILLs only its exact owned `Popen` Child and reaps it. There is no command, IPC permission or remotely accessible fault surface. The existing simulated Rust fault hooks remain `cfg(test)` only. Normal release binary scanning found no acceptance control markers, and a release build check with the feature was intentionally rejected by `compile_error!`.
+
+### Reproduce packaged M4
+
+From `app/`, use a **fresh, nonexistent** acceptance identifier and product name. Do not reuse the already-tested identifiers with this controller; it refuses existing storage.
+
+```sh
+npm run tauri -- build --debug --config '{"identifier":"com.missioncontrol.acceptance.examplefresh","productName":"Mission Control Acceptance"}' --bundles app -- --locked --features native-acceptance
+python3 scripts/native-acceptance.py 'src-tauri/target/debug/bundle/macos/Mission Control Acceptance.app'
+```
+
+The executed builds used the two identifiers above and product names `Mission Control B5 Acceptance` / `Mission Control B5 Final Acceptance`. Both debug builds passed. No development server was running. `scripts/native-acceptance.py` is the committed reproduction procedure, including exact fixture setup, process handling and comparisons. It first initializes the actual SQL plugin, creates three original records, and produces a distinct one-record replacement with identical migration history. It constructs a confirmed restore marker as input; it does not claim to test UI confirmation publication. Each subsequent interruption is an actual termination inside the packaged application's startup/recovery/plugin lifecycle. The inspected states are produced by that process, not constructed as a substitute for process death.
+
+Each comparison includes every record field (`id`, `value`, `created_at`, `note`) and every migration field (`version`, `description`, `installed_on`, `success`, checksum bytes, `execution_time`). Inspection copies the closed/reaped process's main DB and any WAL/SHM/journal companions into temporary storage. It never assumes a killed WAL database consists only of its main file. Every inspected live/recovery snapshot must pass `integrity_check = ok` and empty `foreign_key_check`.
+
+| ID / synchronization boundary | Actual fault and durable state | Expected recovery | Observed result |
+|---|---|---|---|
+| M4-1 `before-snapshot` | SIGKILL before original SQLite snapshot; pending marker retained, no installation marker | Resume confirmed restore, retain original | Replacement exact, original exact, marker cleared after successful startup, two stable reopens; **PASS** |
+| M4-2 `after-snapshot` | SIGKILL after verified original snapshot, before installing marker | Resume restore, preserve previous snapshot too | Replacement exact; original and `previous-original-*.db` exact; two reopens/integrity/FK; **PASS** |
+| M4-3 `original-displaced` | SIGKILL just after main DB renamed into recovery, before remaining move/sync steps | Installation marker causes rollback to original | Main absent and candidate/raw original present at kill; original exact after both reopens, retained snapshot exact; **PASS** |
+| M4-4 `before-install` | SIGKILL after original displacement and installation marker, before candidate rename | Roll back original | Candidate/raw original and absent live main asserted; original exact, marker cleared, two reopens; **PASS** |
+| M4-5 `after-install` | SIGKILL immediately after incoming rename, before following directory sync/validation | Roll back original | Original exact after both reopens, retained recovery exact; **PASS** |
+| M4-6 `before-sql` | SIGKILL after completed install/validation, before SQL plugin initialization | Roll back original | Original exact, full history unchanged, marker removed only by recovered startup; **PASS** |
+| M4-7 `before-ack` | SIGKILL after actual SQL plugin preload/migrations completed, before acknowledgement | Roll back original | Original exact, retained recovery exact, two reopens; **PASS** |
+| M4-8 `after-ack` | SIGKILL after acknowledgement removed pending marker | Keep replacement | Marker already absent at kill; replacement exact after both reopens, original snapshot retained; **PASS** |
+
+All eight rows passed in the first successful run and again on final code. The final bundle was subsequently opened normally through native UI automation with all three original fixture records visible, then quit. Its invalid-marker error window was also checked again; after quit, database SHA-256 and full records/history still matched the original fixture, with integrity/FK passing. Only the synthetic marker was quarantined. Final primary killed PIDs, in table order: 38802, 38805, 38808, 38811, 38814, 38817, 38820, 38823. PID values are observations, **not commands to reuse**. Each run also owns/reaps its initialization child and two reopening children per row. Final `results.json` records states and outcomes.
+
+**Limits:** These are real packaged-process deaths with deterministic scheduling, not simulated I/O errors. They cannot interrupt halfway through an atomic kernel rename, establish power-loss/fsync durability, or cover every individual sidecar rename. No kill occurred midway through SQL plugin initialization; the before-plugin and after-plugin/before-ack boundaries were tested. Checkpoints occur before ordinary window creation, so these are packaged startup tests, not WebView callback interruptions.
+
+### Reproduce M3 and M6 native UI procedures
+
+Use only the freshly initialized disposable bundle/storage produced above. Launch via Finder or native UI automation; confirm the bundle identifier in Info.plist and actual `app_config_dir` signal before any fault. Quit completely before file changes, except the explicitly described runtime permission/capacity tests. Keep copied closed-database baselines and compare using the controller's `snapshot()` helper on copies.
+
+For exact native-dialog paths, use **Command-Shift-G**, set the Go to Folder path, confirm it, and then use a basename in Save As. Entering an absolute path into Save As may instead create a colon-separated filename in the current folder. In the actual run, two such synthetic exports were moved from Documents into the test artifact directory; no unrelated file was modified. Those attempts do not count as permission-fault evidence.
+
+The actual bounded volume commands were:
+
+```sh
+hdiutil create -size 64m -fs APFS -volname MC-B5-Faults -type SPARSE -ov /private/tmp/mc-b5-faults-20261024.sparseimage
+hdiutil attach /private/tmp/mc-b5-faults-20261024.sparseimage -nobrowse -owners on -mountpoint /private/tmp/mc-b5-fault-volume
+# After quitting, preserving the dedicated native directory, and comparing baselines:
+hdiutil detach /private/tmp/mc-b5-fault-volume
+hdiutil attach /private/tmp/mc-b5-faults-20261024.sparseimage -nobrowse -owners on -mountpoint "$HOME/Library/Application Support/com.missioncontrol.acceptance.b5native20261024a"
+# At completion, after quitting and copying only explicit synthetic application files:
+hdiutil detach "$HOME/Library/Application Support/com.missioncontrol.acceptance.b5native20261024a"
+```
+
+These commands were executed successfully; hdiutil printed deprecation warnings suggesting diskutil equivalents. **For a new run, choose a fresh image/path/identifier, do not overwrite this image, and prepare the empty mountpoint only after archiving the test storage.** Verify mount identity with `stat().st_dev != parent.stat().st_dev`, no symlink, APFS device output, and filesystem size below 128 MiB before writing a filler. The executed image was 64 MiB, attached as disk4/APFS disk5. For native SQLite, `ps -axo pid=,comm=` identified the sole exact bundle executable; `lsof -p <owned-test-pid> -Fn` confirmed the dedicated main/WAL/SHM paths and excluded normal production/development DB handles. Actual DB test PID was 37395. Do not reuse recorded PIDs.
+
+To exhaust capacity, the controller wrote only `<verified-test-mount>/bounded-fill`, with bounded loops (up to 128 × 1 MiB, then up to 32768 × 4096 bytes), catching and asserting `errno.ENOSPC`. The remaining 4 KiB allocations matter: the first 1 MiB allocation failure left enough space for a small valid export, which passed and was retained; it was **not** counted as a failed export. After exhausting residual blocks, native export failed with OS error 28. Free capacity by removing **only the positively identified synthetic filler**; a truncate attempt itself returned ENOSPC. Never fill a path without independently proving it is the bounded test mount.
+
+| ID | Setup and action | Expected | Actual UI/error and preservation / status |
+|---|---|---|---|
+| M3-1 / M6-1 inaccessible native storage | Quit; native test directory mode 000, independent write probe must raise PermissionError; launch same bundle. Restore mode 0755 after quit | Actionable error, no reset; normal reopen after permissions restored | Dedicated error window included `file_operation: Permission denied (os error 13)`, preserve-files and permissions/capacity/reopen guidance. Valid DB SHA-256 unchanged; normal launch succeeded; **PASS**, actual OS EACCES |
+| M3-2 export permission | `/private/tmp/mc-b5-export-denied` mode 0500; independent failed probe; export `denied.mcbackup` there | Explicit error; no published destination; records safe | UI showed OS error 13 and permission/disk guidance. Final destination absent. Directory restored to 0700; subsequent export succeeded on recovered APFS volume; six original records/full history exact; **PASS**, actual EACCES. Same-directory retry was not separately exercised |
+| M3-3 export capacity | Verified bounded APFS at `/private/tmp/mc-b5-fault-volume`, exhaust 4 KiB allocations; export `full-exhausted.mcbackup` | ENOSPC, no partial final backup; exact retry succeeds after freeing capacity | UI showed `No space left on device (os error 28)`. Final path absent before freeing filler. Same name/volume retry succeeded; exported records/history exactly matched six-row baseline; integrity/FK passed; **PASS**, actual OS ENOSPC |
+| M3-4 staging workspace permission | While bundle running, native test directory mode 0500; verified EACCES probe; select valid external backup | Workspace creation fails; no live replacement; retry possible | Native UI showed OS error 13; original six-row dataset/history unchanged. Directory restored to 0755; same backup later reached confirmation, then Cancel succeeded; **PASS**, actual EACCES |
+| M3-5 source-copy permission | Native directory writable; synthetic `valid.mcbackup` mode 000, independent read probe fails; select it in native dialog | Copy fails safely, no confirmation or database replacement | UI showed OS error 13. Restore source to 0600 and select same file: validation/confirmation succeeded, Cancel retained all six original rows/history; **PASS**, actual EACCES |
+| M3-6 native SQLite capacity | Quit/archive isolated storage, mount bounded APFS at the exact native app-config directory, copy six-row fixture, launch, verify actual SQLite handles, exhaust volume, Save `APFS disk-full write must fail` | SQLITE_FULL; no partial row or loss; one successful row only after freeing capacity and retry | UI showed `Could not save record` with SQLite code 13, records stayed visible. After deleting only filler, same input saved successfully. Final DB had exactly the original six complete rows plus one retry row; every migration field unchanged; integrity/FK passed; **PASS**, actual APFS capacity failure, not max_page_count simulation |
+
+The observed SQL FULL error originally ended with backup-only advice. Final code adds permissions/free-space/preserve-files advice, with a Rust regression test. The OS failure and successful UI retry were executed before that wording-only change; the final build and regression tests passed afterward. Neither native READONLY/BUSY nor partial physical flush failure is claimed by this follow-up; existing Rust READONLY/BUSY evidence remains separate.
+
+No valid committed data was silently lost in any M3 row. Published exports remained exact; failed final export paths were absent. Closed comparisons covered the six original records/history after all permission/export/copy/WebView scenarios and after the native SQLite failure/retry. Recovery copies from M4 were independently checked for exact originals and integrity. The final volume was detached and the seven-row test DB returned to ordinary isolated native storage. A broad artifact copy initially encountered APFS's inaccessible `.fseventsd`; cleanup was corrected to preserve only the explicit synthetic DB/lock/export files, without changing volume system permissions.
+
+| ID / startup or WebView scenario | Exact setup / expected behavior | Observed result / status |
+|---|---|---|
+| M6-2 invalid marker | Quit, hash closed test DB; `restore.pending = ../invalid-acceptance-marker`; launch | Visible dedicated error window showed `invalid_recovery: Invalid restore marker.` plus recovery guidance. After quit DB SHA-256 unchanged; synthetic marker retained separately; **PASS** |
+| M6-3 invalid recovery snapshot | Create `restore-<uuid>/installing`, invalid `original.db`, pending marker referencing that directory; launch | Dedicated window showed `invalid_size` and underlying 512-byte–64-MiB constraint; existing valid DB SHA-256 unchanged. Invalid snapshot and marker retained; removing only the synthetic pending fixture allowed later launch; **PASS** |
+| M6-4 corrupt native DB / SQL plugin error | Quit and preserve valid DB; replace only test DB with 4117-byte non-SQLite fixture; launch | Dedicated window showed SQL plugin migration failure/code 26, `file is not a database`, and preserve/reopen guidance. Corrupt input SHA-256 unchanged. Test controller retained corrupt fixture and reinstated the preserved valid test DB; successful launch showed original records; **PASS**. This is explicit fixture restoration, not automatic repair |
+| M6-5 WebView independence | Save three new UI records (Unicode/quote), giving six rows; quit. Capture all fields/history. Quarantine only exact test WebKit and cache directories; reopen and quit again | Six values and identical original timestamps visible after reopen. Closed-copy comparison proved exact IDs/values/notes/timestamps and every migration field, integrity `ok`, no FK rows; **PASS** |
+
+For M6-5 the exact quarantined paths were `~/Library/WebKit/com.missioncontrol.acceptance.b5native20261024a` and `~/Library/Caches/com.missioncontrol.acceptance.b5native20261024a`. The former contained dedicated WebsiteData (IndexedDB, LocalStorage, resource-load statistics, salts); the latter contained WebKit NetworkCache/CacheStorage/HSTS. Both had the exact disposable identifier and were checked not to be symlinks. `~/Library/HTTPStorages/<same-id>` did not exist. Quarantine was a reversible move after quit into `/private/tmp/mc-b5-m6-evidence/webview-quarantine/`; no Safari/global profile data was accessed. Native SQLite was untouched by quarantine and remained authoritative.
+
+### Actual validation and retained evidence
+
+All requested final-code checks from `app/` **PASS**:
+
+- `npm run check`: TypeScript + 13 Vitest tests.
+- `npm run build`: TypeScript + Vite assets, including the new error page.
+- `npm run rust:check`: locked Cargo check.
+- `npm run rust:test`: **24 passed, zero failed, one child helper ignored** in the parent run; existing B3–B5 suites plus two error-guidance regressions.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check`.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings`.
+- `npm run desktop:build -- -- --locked`: release `.app`, never launched.
+
+Additional **PASS**: feature-enabled locked all-target Clippy; both isolated debug `.app` builds; both successful eight-boundary controller executions; final release binary control-marker absence; intentional release-feature rejection using `cargo check --manifest-path src-tauri/Cargo.toml --locked --release --features native-acceptance` (nonzero with the expected debug-only compile error). This expected rejection is not a successful compilation. Historical B5-only test commands above were not separately rerun in this follow-up; their tests ran in the complete suite.
+
+Retained local evidence (synthetic data; never staged/committed):
+
+- First successful matrix: temporary-directory basename `mc-b5-native-gc2s7p6a`, under the user's macOS temporary root; per-child logs, archived states, fixtures and `results.json`.
+- Final matrix: `mc-b5-native-hwfqtz_u` under the same temporary root; eight PASS rows and strengthened durable-state assertions. Actual root was `/private/var/folders/hj/8f48nsds0nx1hzqbj6vy__tw0000gn/T/` (also presented by macOS as `/var/folders/...`).
+- `/private/tmp/mc-b5-m6-evidence/`: SHA-256 baselines, retained invalid marker/snapshot fixture references, corrupt input, `before-webview.json`, `m6-comparison.json`, `m3-comparison.json`, verified native SQLite handles, cache quarantine and pre-volume/final-volume native data.
+- `/private/tmp/mc-b5-faults-20261024.sparseimage`: detached bounded image with synthetic exports/DB; no host-space exhaustion.
+
+Preparation failures are not counted as acceptance passes: an npm command first used the repository root instead of `app/`; Python bytecode compilation could not write its default cache; the first fixture controller failed to close Python SQLite connections (context managers commit but do not close), leaving a WAL-backed replacement incomplete when copied. Explicit connection closure fixed this and the full matrix then passed twice. Direct read-only access to a closed UI-created native DB again failed on this environment; inspection was changed to copied main/sidecar files. One preparation command chain continued to mount after a comparison failure, temporarily hiding the existing disposable directory; the image was detached, data compared/preserved, and the ordered setup was rerun successfully before any SQLite fault injection. No data was lost or production/development storage accessed.
+
+**Remaining requirements:** Independent M1 reboot evidence; M2 controlled real power loss on a disposable environment; M5 cross-platform/filesystem/distribution testing. Intra-syscall/physical-flush and mid-SQL-initialization timing remain unverified. B4's retained-copy management, unauthenticated plaintext backup, advisory-lock and Unix directory-durability limits still apply. This follow-up does not close B5 or Stage 2.

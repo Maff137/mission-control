@@ -53,7 +53,9 @@ impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         fail(
             "database_validation",
-            format!("{e}. Select a compatible, intact Mission Control backup."),
+            format!(
+                "{e}. Check storage permissions and free disk space; keep database and recovery files. When restoring, select a compatible, intact Mission Control backup."
+            ),
         )
     }
 }
@@ -596,6 +598,10 @@ impl Store {
             let path = self.dir.join(format!("mission-control.db{suffix}"));
             if path.exists() {
                 fs::rename(path, work.join(format!("{prefix}{suffix}")))?;
+                #[cfg(feature = "native-acceptance")]
+                if prefix == "original-live.db" && suffix.is_empty() {
+                    crate::native_acceptance::checkpoint("original-displaced");
+                }
             }
         }
         sync_dir(work)?;
@@ -649,7 +655,11 @@ impl Store {
                 work.join(format!("previous-original-{}.db", uuid::Uuid::new_v4())),
             )?;
         }
+        #[cfg(feature = "native-acceptance")]
+        crate::native_acceptance::checkpoint("before-snapshot");
         snapshot(&self.database(), &original, false).await?;
+        #[cfg(feature = "native-acceptance")]
+        crate::native_acceptance::checkpoint("after-snapshot");
         let candidate = work.join("candidate.db");
         if candidate.exists() {
             fs::remove_file(&candidate)?;
@@ -660,7 +670,11 @@ impl Store {
             self.move_live(&work, "original-live.db")?;
             #[cfg(test)]
             test_fault("install_rename")?;
+            #[cfg(feature = "native-acceptance")]
+            crate::native_acceptance::checkpoint("before-install");
             fs::rename(candidate, self.database())?;
+            #[cfg(feature = "native-acceptance")]
+            crate::native_acceptance::checkpoint("after-install");
             sync_dir(&self.dir)?;
             validate(&self.database(), true).await
         }

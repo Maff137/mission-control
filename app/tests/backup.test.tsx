@@ -24,7 +24,7 @@ test("structured native errors retain actionable messages", () => {
 
 test("restore lifecycle registration precedes SQL preload and startup acknowledgement", () => {
   const source = readFileSync(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8");
-  expect(source.indexOf('new("backup-lifecycle")')).toBeLessThan(source.indexOf("tauri_plugin_sql::Builder"));
+  expect(source.indexOf("store.startup()")).toBeLessThan(source.indexOf("tauri_plugin_sql::Builder"));
   expect(source).toContain("store.startup()");
   expect(source).toContain(".finish_startup()");
   const capabilities = JSON.parse(readFileSync(new URL("../src-tauri/capabilities/default.json", import.meta.url), "utf8"));

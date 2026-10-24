@@ -16,6 +16,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+native-acceptance = []
+
 [dependencies]
 # Required by generate_context! when embedding plugin preload configuration.
 serde_json = "1"

@@ -1,7 +1,7 @@
 # Mission Control — Project State
 
 **Last updated:** 2026-10-24\
-**Phase:** Stage B3 schema migrations implemented and automatically verified on macOS; native two-build upgrade and wider architectural gate pending.
+**Phase:** Stage B3 completed and verified on macOS ARM64, including native two-build upgrade; wider architectural gate pending.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -171,7 +171,7 @@ Before investing in the final dashboard, build a minimal Tauri prototype that:
 5. Exports a consistent backup and successfully restores it; rejects invalid imports safely.
 6. Verifies platform-specific persistence and build viability, including an early mobile test.
 
-**Status:** PARTIALLY VERIFIED on macOS ARM64 through B1/B2: packaged launch, native SQLite creation/read, and app quit/reopen persistence passed. Initial migration, repeated initialization, and failed-migration rollback were tested. B3 subsequently verifies later schema migration safety in isolated SQLite files. Device restart, a genuine two-build native application upgrade, backup/restore, and other platforms remain pending; the full gate has not passed.
+**Status:** PARTIALLY VERIFIED on macOS ARM64 through B1/B2: packaged launch, native SQLite creation/read, and app quit/reopen persistence passed. Initial migration, repeated initialization, and failed-migration rollback were tested. B3 subsequently verified later schema migration safety and the native B2-to-B3 two-build upgrade. Device restart, backup/restore, and other platforms remain pending; the full gate has not passed.
 
 **Historical, not binding:** The previous implementation was associated with the `backend365days` repository, `projects/backend365-mission-control`, branch `feature/mission-control-foundation`, Python 3.14.6 and FastAPI 0.141.1. The old FastAPI server, localhost workflow, HTML templates and former SQLite setup must not be reused automatically. This is not evidence of currently implemented functionality.
 
@@ -218,14 +218,14 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ### Stage 2 — Application foundation and persistence validation
 
-**Status:** IN PROGRESS — B1 completed and integrated into `main`; B2 native SQLite persistence completed and validated on macOS ARM64. The remaining architectural verification gate is pending; Stage 2 is not complete.
+**Status:** IN PROGRESS — B1 completed and integrated into `main`; B2 native SQLite persistence and B3 safe schema migrations completed and validated on macOS ARM64. The remaining architectural verification gate is pending; Stage 2 is not complete.
 
 **Objective:** Establish a functional, durable, offline-first application foundation before implementing study features.
 
 1. **COMPLETED (B1, macOS ARM64):** Initialize Tauri 2 within `app/` using React, TypeScript, and Vite. See verified scope below.
 2. **COMPLETED (B2, macOS ARM64):** Implement native SQLite persistence outside browser-managed storage, with separate development and production databases.
 3. **PARTIALLY VERIFIED:** Both bundles preserved records across closure/reopening; the user independently confirmed save/close/reopen persistence. Full device restart remains untested.
-4. **PARTIALLY VERIFIED:** Rust-registered initial migration, repeated initialization, and failed-migration rollback passed automated checks. B3 verifies v1-to-v2 preservation, rollback/recovery and incompatibility rejection in isolated SQLite files; a genuine two-build native application upgrade remains pending.
+4. **COMPLETED (B3, macOS ARM64):** Versioned migrations preserve records; rollback/recovery, repeated initialization and incompatibility rejection passed automated tests. A native two-build B2-to-B3 upgrade preserved existing records and new writes through quit/reopen using isolated storage.
 5. **PENDING:** Implement consistent backup export and validated restoration, including safe rejection of invalid backups.
 6. **PENDING:** Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
 7. **ONGOING:** Record actual test results, known limitations, and remaining platform-specific requirements; B2 results are recorded below.
@@ -289,11 +289,11 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - **USER-CONFIRMED:** The user independently saved a record, closed the application, reopened it, and confirmed the record remained available. This was an application restart, not a full device restart; the user has not tested persistence across a device restart.
 - Read-only inspection of both physical SQLite files confirmed the separate records, successful migration version 1 and `PRAGMA integrity_check = ok`. Synthetic records remain in native application storage and are not committed.
 
-**Limitations / next work:** Device reboot, application upgrades and later migration versions, backup/restore, disk corruption/permission fault injection in the UI, clearing WebView data, signed distribution and non-macOS platforms remain unverified. Error propagation is tested automatically, but native initialization failures have not been manually injected. The interface is temporary and duplicate text is allowed intentionally; the guard prevents simultaneous submissions, not repeated intentional saves. The broader Stage 2 gate remains open. Next foundation work should validate compatible upgrades, backups/restores and platform viability before production study workflows; no next-stage implementation is included in B2.
+**Limitations / next work at the B2 milestone (upgrade validation superseded by B3 below):** Device reboot, application upgrades and later migration versions, backup/restore, disk corruption/permission fault injection in the UI, clearing WebView data, signed distribution and non-macOS platforms remain unverified. Error propagation is tested automatically, but native initialization failures have not been manually injected. The interface is temporary and duplicate text is allowed intentionally; the guard prevents simultaneous submissions, not repeated intentional saves. The broader Stage 2 gate remains open. Next foundation work should validate compatible upgrades, backups/restores and platform viability before production study workflows; no next-stage implementation is included in B2.
 
 ### Stage B3 — Safe database schema migrations
 
-**Status:** IMPLEMENTED; automated acceptance scenarios VERIFIED on macOS ARM64 (2026-10-24). Native two-build upgrade remains PENDING; no claim of complete native upgrade validation or completion of the wider Stage 2 gate.
+**Status:** COMPLETED AND VERIFIED on macOS ARM64 (2026-10-24), including automated acceptance scenarios and a genuine native two-build upgrade. The wider Stage 2 gate remains open.
 
 - Migration 1 is byte-for-byte unchanged. Registered migration 2, `0002_add_test_record_note.sql`, adds `note TEXT NOT NULL DEFAULT ''`. Existing frontend inserts/reads remain compatible; database URL and production/development identifiers are unchanged. No study-session schema or backup/restore implementation was added.
 - Forward-only policy: never change applied SQL, descriptions or versions; append numbered migrations and register them in Rust. The official SQL plugin and SQLx remain the sole engine/history (`_sqlx_migrations`); no reset, downgrade, replacement or secondary tracker was introduced.
@@ -308,12 +308,21 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - `npm run rust:test`: passed **4 Rust tests**; zero failures.
 - `cargo fmt --manifest-path src-tauri/Cargo.toml --check`: passed.
 - `cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings`: passed.
-- `npm run desktop:build -- -- --locked`: passed; generated the macOS ARM64 `Mission Control.app` bundle. The bundle was not launched.
+- `npm run desktop:build -- -- --locked`: passed; generated the macOS ARM64 `Mission Control.app` bundle. That production bundle was not launched; the follow-up below launched only isolated test bundles.
 - Initial native compilation exposed the required `serde_json` direct dependency for plugin configuration; resolved and checks rerun successfully. Two npm invocations from the repository root failed because package.json is in `app/`; the actual checks above ran successfully from `app/`.
 
-**Native upgrade status:** NOT EXECUTED / PENDING. No isolated two-build native UI upgrade harness exists in this repository, and no validation build was launched against either existing user database. The automated B2-schema-to-B3-schema test verifies the engine/data path, not WebView IPC, plugin setup failure presentation, or a two-build application transition. A later check must use the same dedicated validation identifier/database for both builds, save in B2, fully quit, upgrade to B3, verify unchanged records and new writes, then quit/reopen again.
+**Native two-build upgrade follow-up (2026-10-24): PASSED.**
 
-**Remaining architectural work:** Native two-build upgrade and startup-failure UI verification, device restart, backup/restore, corruption/permissions fault injection, WebView-data clearing, signing/distribution and non-macOS/mobile viability remain open. Existing Stage 1/product questions remain unchanged.
+- Environment: macOS 27.0.1 (26A434), ARM64. Detached worktrees `/private/tmp/mc-b3-native-b2` at `b75d65f` and `/private/tmp/mc-b3-native-b3` at `52dadb7`; application source, lockfiles and applied migrations remained unchanged. Each worktree added only a local JSON override: `{"identifier":"com.missioncontrol.desktop.b3upgrade20261024","productName":"Mission Control Upgrade Test"}`. Existing installed npm dependencies and the Cargo target cache were reused; each resulting bundle was copied to its own worktree before the next build.
+- In each worktree's `app/`, the exact build command was `CARGO_TARGET_DIR=/Users/maff137/dev/projects/mission-control/app/src-tauri/target npm run tauri -- build --debug --config src-tauri/tauri.upgrade-test.conf.json --bundles app -- --locked`. **Both passed**, including frontend production builds. Bundles embedded assets at `tauri://localhost`; no development server was started.
+- Verified both bundle `Info.plist` identifiers before launch. The dedicated test directory did not exist before B2 launch. Both bundles used `~/Library/Application Support/com.missioncontrol.desktop.b3upgrade20261024/mission-control.db`. Production and development apps were not launched; validation scripts never opened either existing database. `lsof -c mission-control -Fn` confirmed the B2/B3 executable paths and only the dedicated test database/WAL/SHM paths, including after B3 reopen.
+- Launched B2 through native app automation. Saved three synthetic records through the form: alpha, beta (including an ASCII quote and a Unicode rocket), and gamma. Each save displayed success. Quit with Command-Q; confirmed PID 21786 no longer existed before inspecting the closed database. Snapshot contained exactly three records, migration history only `(1, success)`, and integrity `ok`.
+- Launched the separate B3 bundle. All three original records and their original timestamps appeared automatically. Saved the new delta record through the interface and observed success and a fourth row. Quit completely (PID 22188 exited). Closed-database comparison verified all original IDs, values and creation timestamps unchanged, count increased from 3 to 4, successful migration versions 1/2, `note TEXT NOT NULL DEFAULT ''`, all four notes empty, and integrity `ok`.
+- Reopened the same B3 bundle. All four values and original timestamps appeared automatically. Observed the isolated database handles again, quit fully (PID 22221 exited), and compared another closed snapshot: all four complete records and the full `_sqlx_migrations` history were identical, proving no migration reapplication. Integrity remained `ok`; `foreign_key_check` returned no rows.
+- SQLite could not open the native test path directly in read-only mode (including an escalated attempt: `unable to open database file`). Verification therefore read file bytes into temporary snapshots **only after confirmed process exit and no WAL file**, then queried those copies. No schema/data writes or repairs were performed on the native database by the inspection scripts. Snapshots and test records remain outside Git; no user data was removed. The worktrees, test bundles and dedicated native test data were retained.
+- Follow-up checks from the existing B3 branch's `app/`: `npm run check` **passed (9 Vitest tests)** and `npm run rust:test` **passed (4 Rust tests)**. Both isolated native build commands above passed. The follow-up changes only README/state documentation; prior B3 formatting, Clippy, Rust check and release packaging results remain recorded above, not claimed as rerun here. Documentation consistency review and Git whitespace checks passed before commit.
+
+**Remaining architectural work:** Native startup-failure UI verification, device restart, backup/restore, corruption/permissions fault injection, WebView-data clearing, signing/distribution and non-macOS/mobile viability remain open. This validates a debug-bundle application/schema transition, not a signed installer or updater delivery mechanism. Existing Stage 1/product questions remain unchanged.
 
 ### Next development milestone
 

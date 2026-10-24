@@ -43,7 +43,7 @@ The implemented foundation uses:
 | Application framework | Tauri 2 | Approved |
 | Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
 | Native integration | Rust | Tauri entry point and versioned SQLite migration registration implemented |
-| Local database | SQLite via official Tauri SQL plugin | B2 persistence and B3 schema migration tests validated on macOS ARM64 |
+| Local database | SQLite via official Tauri SQL plugin | B2 persistence and B3 two-build schema upgrade validated on macOS ARM64 |
 
 Broader platform support and the production study schema still require implementation and validation.
 
@@ -53,9 +53,9 @@ Broader platform support and the production study schema still require implement
 
 The project is being rebuilt from scratch while preserving previously approved functional requirements.
 
-B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade.
+B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade. The native two-build upgrade from `b75d65f` to `52dadb7` also passed with a dedicated test identifier.
 
-Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. A genuine two-build native application upgrade, backup/restore, and additional platforms remain pending architectural verification. Study workflows are not implemented.
+Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. Backup/restore and additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -129,7 +129,11 @@ Migrations are forward-only and versioned. Never edit an applied migration's SQL
 
 Four Rust tests use isolated temporary SQLite files and the exact registered SQL, migration kinds, and SQLx engine. They verify v1-to-v2 preservation of multiple IDs, values, timestamps and counts, empty note defaults, new inserts, fresh schema/history, unchanged history on reopen, transactional DDL/data rollback after intentional failure, recovery, future-version/checksum rejection, integrity, and constraints. Frontend checks cover startup failure blocking dependent operations and native preload configuration. No development or production user databases are opened by these tests.
 
-B3 validation passed `npm run check` (9 Vitest tests), `npm run build`, `npm run rust:check`, `npm run rust:test` (4 Rust tests), formatting, Clippy with all targets, and the locked desktop bundle build. B3 automated migration validation is verified. A genuine two-build native UI upgrade has **not been executed**: there is no isolated two-build native test harness in the repository. It remains pending; SQLx tests and successful packaging do not establish that end-to-end result. Do not launch a validation build with the production/development identifiers; use a dedicated identifier for both builds and the same isolated database.
+B3 is complete for the validated macOS ARM64 scope. Automated validation passed `npm run check` (9 Vitest tests), `npm run build`, `npm run rust:check`, `npm run rust:test` (4 Rust tests), formatting, Clippy with all targets, and the locked desktop bundle build.
+
+The native two-build upgrade passed on macOS 27.0.1: detached worktrees at B2 `b75d65f` and B3 `52dadb7` produced separate debug `.app` bundles using the same dedicated identifier, `com.missioncontrol.desktop.b3upgrade20261024`. Three records were saved through the B2 interface, then B2 was fully quit. B3 loaded all three, saved a fourth, and retained all four after a full quit/reopen. Closed-database snapshots confirmed exact original IDs, values and timestamps, successful migration versions 1/2, empty note defaults, unchanged migration history on reopen, and integrity `ok`. Bundle identifiers and observed open SQLite paths confirmed test storage isolation; production/development databases were not opened by the validation. No applied migrations or application source were changed. See [Project State](docs/STATE.md#stage-b3--safe-database-schema-migrations) for build commands, evidence and remaining architectural checks.
+
+For future native upgrade checks, use a fresh dedicated identifier shared by both builds, never the production/development identifiers or an already upgraded test database with the older build.
 
 ### Manual macOS durability check
 
@@ -140,7 +144,7 @@ B3 validation passed `npm run check` (9 Vitest tests), `npm run build`, `npm run
 5. In Finder, use **Go → Go to Folder** for `~/Library/Application Support/com.missioncontrol.desktop/`. Confirm `mission-control.db` is outside the repository. Do not delete it to recover from errors.
 6. Repeat using `npm run desktop:dev` with a different value; production and development records should be separate. Stop development, then reopen the production bundle to confirm isolation.
 
-This is a temporary persistence prototype, not the final study schema. Device reboot, a two-build native upgrade, backup/restore, signing, and other platforms require later validation.
+This is a temporary persistence prototype, not the final study schema. Device reboot, backup/restore, signing, native startup-failure presentation, and other platforms require later validation.
 
 ## Documentation
 

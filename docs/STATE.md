@@ -1,7 +1,7 @@
 # Mission Control — Project State
 
 **Last updated:** 2026-10-24\
-**Phase:** Rebuild from scratch; Tauri 2 approved; storage implementation and cross-platform support pending validation.  
+**Phase:** Stage B1 application foundation implemented on macOS; storage and cross-platform validation pending.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -26,6 +26,7 @@
 - **APPROVED:** Target desktop and mobile devices, accepting practical minimum OS/WebView versions and platform-specific packaging; simultaneous cross-device synchronization is not a current priority.
 - **RECOMMENDED:** React + TypeScript + Vite for the interface, Tauri's Rust layer for native operations, and SQLite for local persistence. Validate compatibility and durable storage before treating this implementation as established.
 - **OPEN:** Exact supported OS versions, installers, native persistence integration, complete schema and migration strategy, backup format, test matrix and release process.
+- **VERIFIED (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. No persistence or study features are implemented.
 - **OBSERVED (2026-10-20):** The new GitHub repository had an empty `README.md` and no `STATE.md` on `main` before this document was drafted. No working features were verified in the new repository.
 
 ## 2. Preserved functional requirements
@@ -215,11 +216,11 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ### Stage 2 — Application foundation and persistence validation
 
-**Status:** PLANNED
+**Status:** IN PROGRESS — B1 application shell implemented; persistence and the remaining architectural gate are not completed.
 
 **Objective:** Establish a functional, durable, offline-first application foundation before implementing study features.
 
-1. Initialize Tauri 2 within `app/`, using React, TypeScript, and Vite as the recommended frontend stack, subject to technical validation.
+1. **COMPLETED (B1, macOS ARM64):** Initialize Tauri 2 within `app/` using React, TypeScript, and Vite. See verified scope below.
 2. Implement native SQLite persistence outside browser-managed storage.
 3. Verify data durability across application closure, reopening, and device restarts.
 4. Implement and test database schema migrations without losing existing records.
@@ -228,6 +229,32 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 7. Record actual test results, known limitations, and remaining platform-specific requirements.
 
 **Completion criteria:** The application launches without a manually managed server, operates offline, persists data reliably, and demonstrates safe migration and backup/restore behavior.
+
+### Stage B1 — Minimal application foundation
+
+**Status:** IMPLEMENTED AND BUILD-VERIFIED on macOS ARM64 (2026-10-24). Other platforms remain unverified.
+
+- Generated using the official `create-tauri-app` React/TypeScript template, then removed demo commands, unused frontend assets, opener integration, and unnecessary runtime dependencies. Source icons remain template placeholders.
+- Added a single native `main` window titled **Mission Control**, a static English welcome screen with a yellow accent, a local-assets content security policy, and no frontend native-command permissions.
+- Added npm scripts for development, TypeScript checks, smoke tests, frontend builds, macOS packaging, and locked Rust checks/tests. Committed npm and Cargo lockfiles.
+- Reviewed ignore rules: the existing root rules and generated native `.gitignore` exclude dependencies, frontend output, Cargo targets, and Tauri-generated schemas. No root ignore changes were needed.
+- Updated README with prerequisites, exact commands, local bundle location, and the distinction between the CLI-managed development server and embedded production assets.
+
+**Actual validation:**
+
+- Environment: macOS 27.0.1, ARM64, Xcode Command Line Tools; Node 24.21.0, npm 11.19.0, Rust/Cargo 1.99.1. Rust, rustfmt, and Clippy were installed for this validation.
+- `npm ci`: passed; audit reported zero vulnerabilities.
+- `npm run check`: passed TypeScript and two smoke tests (server-rendered identity and native window/bundled-assets configuration).
+- `npm run build`: passed; Vite production assets generated.
+- `npm run rust:check`: passed with `--locked`.
+- `npm run rust:test`: passed; the Rust test harness currently contains **zero native tests**.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check`: passed.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings`: passed.
+- `npm run desktop:build -- -- --locked`: passed; generated `Mission Control.app` for macOS ARM64.
+- `npm run desktop:dev`: Vite started and Cargo compiled/launched the native executable. The UI automation tool could not select the unbundled development process; its rendering was not visually verified.
+- Packaged application: opened the `.app` with the Vite process stopped; accessibility inspection showed the Mission Control heading at `tauri://localhost`, and a screenshot confirmed the styled welcome screen. Closed the package after verification. This verifies embedded assets without a development server, not a disconnected-network test.
+
+**Limitations:** Local development bundle only; distribution signing/notarization, custom icons, end-to-end WebView automation, Windows/Linux/mobile builds, and supported OS minimums remain unverified. No SQLite, schemas, migrations, backup/restore, durable user data, or study workflows were added. The wider Stage 2 architectural gate remains open.
 
 ### Next development milestone
 

@@ -41,8 +41,8 @@ The proposed technical stack includes:
 | Component | Technology | Status |
 |---|---|---|
 | Application framework | Tauri 2 | Approved |
-| Frontend | React, TypeScript, Vite | Recommended |
-| Native integration | Rust | Recommended |
+| Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
+| Native integration | Rust | Minimal Tauri entry point implemented |
 | Local database | SQLite | Recommended |
 
 Technical recommendations will be finalized through implementation and validation.
@@ -61,9 +61,9 @@ No production-ready release or installation package is currently available.
 
 ```text
 mission-control/
-├── app/          # Application source (pending initialization)
+├── app/          # React/Vite frontend, smoke tests, and src-tauri/ native shell
 ├── docs/         # Project state and specifications
-├── tests/        # Test suite (pending implementation)
+├── tests/        # Reserved for future repository-level tests
 ├── AGENTS.md     # Coding agent instructions
 ├── .gitignore
 └── README.md
@@ -73,7 +73,40 @@ The structure will evolve as implementation progresses.
 
 ## Getting Started
 
-Development environment setup, build instructions, and installation procedures will be documented once the application foundation is established.
+Stage B1 provides a minimal native window with a static Mission Control welcome screen. Study features and persistence are not implemented.
+
+### Prerequisites
+
+- Node.js 24 LTS and npm (validated with Node 24.21.0 and npm 11.19.0).
+- Stable Rust with Cargo; `rustup component add rustfmt clippy` for native quality checks (validated with Rust 1.99.1).
+- Platform dependencies from the [official Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). On macOS desktop, install Xcode Command Line Tools with `xcode-select --install`. Full Xcode is needed for iOS work, which is outside B1.
+
+### Development and validation
+
+Run from `app/`:
+
+```sh
+npm ci
+npm run desktop:dev
+```
+
+The Tauri CLI starts and stops the Vite development server automatically. Development uses localhost; the packaged application embeds the built frontend and does not require Node, a user-managed server, an account, or network access during normal use.
+
+```sh
+npm run check          # TypeScript and two smoke tests
+npm run build          # Frontend production assets
+npm run rust:check     # Cargo check using Cargo.lock
+npm run rust:test      # Rust test harness (no native unit tests yet)
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings
+npm run desktop:build -- -- --locked  # macOS .app bundle
+```
+
+`npm run dev` and `npm run preview` are frontend-only helpers. `npm run tauri -- <command>` exposes the native CLI. The desktop build command currently targets the validated macOS `.app` format; other platform packaging remains unverified. Lockfiles are committed for reproducible dependency resolution.
+
+The macOS bundle is generated at `app/src-tauri/target/release/bundle/macos/Mission Control.app`. Open it through Finder, or copy it to Applications for local use. This is a local development bundle, not a signed/notarized distribution release. Template icons remain placeholders.
+
+Smoke tests check server-rendered application identity and the bundled-assets/window configuration. Native launch and packaged rendering require a desktop smoke check; these tests are not end-to-end WebView automation. See [Project State](docs/STATE.md) for actual results and limitations.
 
 ## Documentation
 

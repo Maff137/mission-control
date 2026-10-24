@@ -43,7 +43,7 @@ The implemented foundation uses:
 | Application framework | Tauri 2 | Approved |
 | Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
 | Native integration | Rust | Tauri entry point and versioned SQLite migration registration implemented |
-| Local database | SQLite via official Tauri SQL plugin | B2 completed and validated on macOS ARM64 |
+| Local database | SQLite via official Tauri SQL plugin | B2 persistence and B3 schema migration tests validated on macOS ARM64 |
 
 Broader platform support and the production study schema still require implementation and validation.
 
@@ -53,9 +53,9 @@ Broader platform support and the production study schema still require implement
 
 The project is being rebuilt from scratch while preserving previously approved functional requirements.
 
-B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. Recorded automated verification passed 8 Vitest tests and 2 Rust tests.
+B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade.
 
-Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. Application upgrades, future migrations preserving records, backup/restore, and additional platforms remain pending architectural verification. Study workflows are not implemented.
+Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. A genuine two-build native application upgrade, backup/restore, and additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -100,7 +100,7 @@ npm run build          # Frontend production assets
 npm run rust:check     # Cargo check using Cargo.lock
 npm run rust:test      # Native SQLite migration/durability tests
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings
+cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
 npm run desktop:build -- -- --locked  # Production macOS .app bundle
 # Isolated development .app bundle for native persistence checks:
 npm run tauri -- build --debug --config src-tauri/tauri.dev.conf.json --bundles app -- --locked
@@ -114,7 +114,7 @@ Automated tests cover the TypeScript persistence boundary, native SQLite migrati
 
 ## SQLite persistence prototype
 
-The official `tauri-plugin-sql` (SQLite feature) and `@tauri-apps/plugin-sql` use `sqlite:mission-control.db`. Rust registers migration version 1 from `app/src-tauri/migrations/`; `Database.load` applies it through the plugin's transactional SQLx migrator. Initialization does not seed, delete, replace, or reset records. Errors are displayed in the test interface. SQL lives in a typed persistence module, with parameter binding and a concurrent-write guard.
+The official `tauri-plugin-sql` (SQLite feature) and `@tauri-apps/plugin-sql` use `sqlite:mission-control.db`. Rust registers migration versions 1 and 2 from `app/src-tauri/migrations/`. Version 2 (`0002_add_test_record_note.sql`) adds `note TEXT NOT NULL DEFAULT ''` without changing the existing persistence interface. The SQL plugin preloads the database and applies transactional SQLx migrations during native startup; a migration error aborts startup before database operations are available. This also avoids the plugin 2.6.0 load-retry path consuming migration registration after a failed migration. The plugin configuration requires a direct `serde_json` dependency for Tauri context generation; it was already present transitively. Initialization does not seed, delete, replace, or reset records. Runtime load/query errors are displayed in the test interface; migration errors now fail native startup. SQL lives in a typed persistence module, with parameter binding and a concurrent-write guard.
 
 On macOS the plugin resolves the native application configuration directory under `~/Library/Application Support/`:
 
@@ -122,6 +122,14 @@ On macOS the plugin resolves the native application configuration directory unde
 - Development: `com.missioncontrol.desktop.dev/mission-control.db`.
 
 `npm run desktop:dev` explicitly loads `src-tauri/tauri.dev.conf.json`, separating development storage without changing the production identifier. Plain `tauri dev` does not load that override; use the npm command. Production packaging uses the base configuration. Permissions enable only SQL load, select, and execute. There is no browser-storage fallback.
+
+### Schema migration safety (B3)
+
+Migrations are forward-only and versioned. Never edit an applied migration's SQL, description, or version; add the next numbered file and register it in Rust. Migration 1 remains byte-for-byte unchanged. SQLx's `_sqlx_migrations` is the only migration history; unknown applied versions and checksum mismatches fail safely without reset or downgrade.
+
+Four Rust tests use isolated temporary SQLite files and the exact registered SQL, migration kinds, and SQLx engine. They verify v1-to-v2 preservation of multiple IDs, values, timestamps and counts, empty note defaults, new inserts, fresh schema/history, unchanged history on reopen, transactional DDL/data rollback after intentional failure, recovery, future-version/checksum rejection, integrity, and constraints. Frontend checks cover startup failure blocking dependent operations and native preload configuration. No development or production user databases are opened by these tests.
+
+B3 validation passed `npm run check` (9 Vitest tests), `npm run build`, `npm run rust:check`, `npm run rust:test` (4 Rust tests), formatting, Clippy with all targets, and the locked desktop bundle build. B3 automated migration validation is verified. A genuine two-build native UI upgrade has **not been executed**: there is no isolated two-build native test harness in the repository. It remains pending; SQLx tests and successful packaging do not establish that end-to-end result. Do not launch a validation build with the production/development identifiers; use a dedicated identifier for both builds and the same isolated database.
 
 ### Manual macOS durability check
 
@@ -132,7 +140,7 @@ On macOS the plugin resolves the native application configuration directory unde
 5. In Finder, use **Go → Go to Folder** for `~/Library/Application Support/com.missioncontrol.desktop/`. Confirm `mission-control.db` is outside the repository. Do not delete it to recover from errors.
 6. Repeat using `npm run desktop:dev` with a different value; production and development records should be separate. Stop development, then reopen the production bundle to confirm isolation.
 
-This is a temporary persistence prototype, not the final study schema. Device reboot, upgrades, backup/restore, signing, and other platforms require later validation.
+This is a temporary persistence prototype, not the final study schema. Device reboot, a two-build native upgrade, backup/restore, signing, and other platforms require later validation.
 
 ## Documentation
 

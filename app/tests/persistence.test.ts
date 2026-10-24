@@ -42,3 +42,17 @@ test("propagates select failures without fabricating empty records", async () =>
   const store = createPersistence(async () => ({ execute: vi.fn(), select: vi.fn().mockRejectedValue(new Error("corrupt")) }));
   await expect(store.readRecords()).rejects.toThrow("corrupt");
 });
+
+test("blocks dependent operations when native initialization fails", async () => {
+  const execute = vi.fn();
+  const select = vi.fn();
+  const load = vi.fn(async () => {
+    await Promise.reject(new Error("migration failed"));
+    return { execute, select };
+  });
+  const store = createPersistence(load);
+  await expect(store.readRecords()).rejects.toThrow("migration failed");
+  await expect(store.insertRecord("keep data")).rejects.toThrow("migration failed");
+  expect(execute).not.toHaveBeenCalled();
+  expect(select).not.toHaveBeenCalled();
+});

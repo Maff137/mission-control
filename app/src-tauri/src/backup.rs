@@ -9,6 +9,23 @@ use std::{
     time::{Duration, Instant},
 };
 
+// One-shot filesystem failures exist only in the Rust test executable.
+#[cfg(test)]
+thread_local! {
+    pub static TEST_FAULT: std::cell::Cell<Option<&'static str>> = const { std::cell::Cell::new(None) };
+}
+#[cfg(test)]
+fn test_fault(operation: &str) -> Result<()> {
+    TEST_FAULT.with(|fault| {
+        if fault.get() == Some(operation) {
+            fault.set(None);
+            Err(std::io::Error::from(std::io::ErrorKind::StorageFull).into())
+        } else {
+            Ok(())
+        }
+    })
+}
+
 pub const MAX_SIZE: u64 = 64 * 1024 * 1024;
 const APP_ID: i64 = 0x4d434250; // MCBP
 const FORMAT: i64 = 1;
@@ -204,6 +221,8 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
     Ok(())
 }
 fn sync_dir(path: &Path) -> Result<()> {
+    #[cfg(test)]
+    test_fault("directory_sync")?;
     #[cfg(unix)]
     File::open(path)?.sync_all()?;
     #[cfg(not(unix))]
@@ -218,9 +237,15 @@ fn durable_write(path: &Path, bytes: &[u8]) -> Result<()> {
             .write(true)
             .create_new(true)
             .open(&temporary)?;
+        #[cfg(test)]
+        test_fault("marker_write")?;
         file.write_all(bytes)?;
+        #[cfg(test)]
+        test_fault("marker_sync")?;
         file.sync_all()?;
         // Atomic no-clobber publication. A partial marker is never visible.
+        #[cfg(test)]
+        test_fault("marker_publish")?;
         fs::hard_link(&temporary, path)?;
         sync_dir(parent)
     })();
@@ -250,11 +275,15 @@ pub fn copy_bounded(source: &Path, target: &Path) -> Result<()> {
         .create_new(true)
         .write(true)
         .open(target)?;
+    #[cfg(test)]
+    test_fault("copy")?;
     let count = std::io::copy(&mut input, &mut output)?;
     if count > MAX_SIZE {
         return Err(fail("invalid_size", "Backup grew beyond the 64 MiB limit."));
     }
     private_file(target)?;
+    #[cfg(test)]
+    test_fault("copy_sync")?;
     output.sync_all()?;
     sync_dir(target.parent().unwrap())
 }
@@ -457,6 +486,8 @@ impl Store {
         let temp = work.join("snapshot.mcbackup");
         let result = async {
             snapshot(&self.database(), &temp, true).await?;
+            #[cfg(test)]
+            test_fault("export_publish")?;
             fs::hard_link(&temp, destination)?;
             sync_dir(&parent)?;
             Ok(true)
@@ -627,6 +658,8 @@ impl Store {
         durable_write(&work.join("installing"), b"1")?;
         let result = async {
             self.move_live(&work, "original-live.db")?;
+            #[cfg(test)]
+            test_fault("install_rename")?;
             fs::rename(candidate, self.database())?;
             sync_dir(&self.dir)?;
             validate(&self.database(), true).await

@@ -436,3 +436,6 @@ fn live_sources_and_internal_storage_cannot_be_imported() {
         assert_eq!(contents(&store.database()).await, before);
     });
 }
+
+#[path = "resilience_tests.rs"]
+mod resilience_tests;

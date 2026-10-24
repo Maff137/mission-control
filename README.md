@@ -54,7 +54,7 @@ The project is being rebuilt from scratch while preserving previously approved f
 
 B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade. The native two-build upgrade from `b75d65f` to `52dadb7` also passed with a dedicated test identifier.
 
-Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. B4 implements consistent export and restart-based restore; native B4 validation is recorded below. Additional platforms remain pending architectural verification. Study workflows are not implemented.
+B5 adds isolated process-termination and filesystem-fault integration tests, plus a native B2→B3→B4→current upgrade lineage and packaged SIGKILL recovery. Its verified scope and remaining acceptance gaps are recorded in [B5 resilience evidence](docs/B5-RESILIENCE-REPORT.md). B5 is partially verified; Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. B4 implements consistent export and restart-based restore; native B4 validation is recorded below. Additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -168,6 +168,21 @@ Dependencies added directly in Rust are `tauri-plugin-dialog` (native dialogs; `
 **Validation (macOS ARM64):** Native dialogs, cancellation, confirmed restore through full quit/reopen, exact restored records/history, retained original recovery data, another reopening, and malformed-file rejection passed using only the dedicated `com.missioncontrol.desktop.b4test20261024` bundle/storage. Production/development user databases were not opened. The locked desktop bundle build passed.
 
 **Automated verification:** 13 Vitest tests and 16 Rust tests passed, including multiple/empty records, exact records/history, WAL snapshots, restore/reopen, repeated restore, cancellation boundaries, incompatible/corrupt/truncated/oversized files, migration/checksum rejection, failed staging, interrupted export cleanup, replacement rollback, invalid recovery preservation and dev/prod isolation. Tests use unique temporary directories only. TypeScript/Vite, locked Rust check/test, rustfmt and Clippy with all targets passed. Native packaging and UI validation status are recorded in [Project State](docs/STATE.md#stage-b4--consistent-backup-export-and-safe-restore). Stage 2 remains in progress.
+
+## Resilience verification (B5)
+
+The Rust suite now passes **22 scenario tests**, including six B5 tests, with one subprocess helper ignored in the parent run and explicitly invoked by the harness. It reuses isolated B4 fixtures and compares complete records and migration metadata. B5 covers killed processes with committed WAL/uncommitted transactions, exclusive process locking, distinct restore/rollback data, durable confirmation boundaries, retained originals, invalid markers/formats, SQLite FULL/READONLY/BUSY errors, actual temporary-directory permission failures, and deterministic copy/flush/publication/rename failures. Fault hooks compile only in test builds; there is no production fault-injection API or new dependency.
+
+Run B5 alone from `app/`:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml --locked b5_ -- --nocapture
+cargo test --manifest-path src-tauri/Cargo.toml --locked b5_ -- --nocapture --test-threads=1
+```
+
+Both commands passed, along with 13 Vitest tests and all documented frontend/native, formatting, Clippy and release-packaging checks. Isolated macOS bundles verified the historical upgrade lineage, committed-record recovery after SIGKILL, concurrent-instance rejection, fail-closed startup with an invalid recovery marker and subsequent reopen. Native database integrity and foreign-key checks passed; exact snapshots retained original IDs, values, notes, timestamps and migration history. Normal development/production databases were not opened.
+
+**B5 remains partially verified.** SIGKILL does not establish power-loss durability. Full device reboot, native UI handling of real disk/permission faults, every interior restore interruption in packaged startup, startup-error UX, WebView-data clearing, signed updater delivery and other platforms remain unverified. Stage 2 stays open. See the [B5 report](docs/B5-RESILIENCE-REPORT.md) for exact commands, per-scenario results, reproducible native procedures and limitations.
 
 ## Documentation
 

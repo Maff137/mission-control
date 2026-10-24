@@ -1,7 +1,7 @@
 # Mission Control — Project State
 
 **Last updated:** 2026-10-24\
-**Phase:** Stage B3 completed and verified on macOS ARM64, including native two-build upgrade; wider architectural gate pending.
+**Phase:** Stage B4 implemented and verified on macOS ARM64; wider Stage 2 architectural gate remains pending.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -25,7 +25,8 @@
 - **APPROVED:** No user-managed server, terminal command, localhost URL, cloud account or internet connection is required for normal use after installation.
 - **APPROVED:** Target desktop and mobile devices, accepting practical minimum OS/WebView versions and platform-specific packaging; simultaneous cross-device synchronization is not a current priority.
 - **RECOMMENDED:** React + TypeScript + Vite for the interface, Tauri's Rust layer for native operations, and SQLite for local persistence. Validate compatibility and durable storage before treating this implementation as established.
-- **OPEN:** Exact supported OS versions, installers, final study schema and future migrations, backup format, cross-platform test matrix and release process.
+- **OPEN:** Exact supported OS versions, installers, final study schema and future migrations, future backup compatibility, cross-platform test matrix and release process.
+- **VERIFIED (2026-10-24):** Stage B4 adds consistent portable snapshots, bounded native validation and confirmed restart-only restoration with retained originals and interruption recovery. Automated checks and an isolated macOS ARM64 export/restore/reopen passed; see B4 below. Stage 2 remains open.
 - **VERIFIED (2026-10-24):** Stage B2 adds native SQLite test-record persistence, transactional initialization, isolated dev storage, and packaged-app quit/reopen verification in both environments. See B2 results below; the wider foundation gate is still open.
 - **HISTORICAL B1 VALIDATION (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. At the B1 milestone, no persistence or study features were implemented; B2 adds persistence as described below.
 - **OBSERVED (2026-10-20):** The new GitHub repository had an empty `README.md` and no `STATE.md` on `main` before this document was drafted. No working features were verified in the new repository.
@@ -137,7 +138,7 @@
 | Database | **APPROVED / IMPLEMENTED (B2)** — native SQLite through the official Tauri SQL plugin; versioned transactional migrations, verified on macOS. Other platforms remain unverified. |
 | UI stack | **RECOMMENDED** — React, TypeScript and Vite; native operations through Tauri/Rust. Final dependency choices and module boundaries are **OPEN**. |
 | Data durability | **APPROVED** — data should survive app closure, device restart, inactivity, browser cache/history clearing and correctly implemented app updates. Uninstallation may remove private app data; backups mitigate this and other loss scenarios. |
-| Backup and restore | **APPROVED DIRECTION** — portable, user-controlled export/import with validation and consistent snapshots. File format, retention and automatic backup policy are **OPEN**. |
+| Backup and restore | **APPROVED DIRECTION** — portable, user-controlled export/import with validation and consistent snapshots. B4 implements format 1 and retained recovery copies for the prototype; future compatibility, retention UI and automatic backup policy remain **OPEN**. |
 | Cross-device synchronization | **NOT REQUIRED FOR MVP** — no concurrent profile sharing or automatic sync. **PLANNED** — manual backup transfer/import later; merging divergent device histories requires separate rules. |
 | Authentication and hosting | **NOT REQUIRED FOR MVP** — no accounts, remote server or hosting dependency. Optional online services are not approved requirements. |
 | Architecture and quality | **OPEN IMPLEMENTATION** — database schema, migrations, native storage permissions, error recovery, tests, packaging and cross-platform release pipeline. |
@@ -150,7 +151,7 @@
 - **APPROVED DIRECTION:** Provide portable backup export and validated restore, keeping stored data independent of a single installation when the user explicitly exports it.
 - **PLANNED:** Design stable record IDs and versioned export metadata so future manual transfer or merging remains feasible without implementing sync now.
 - **IMPLEMENTED (B2):** Official Tauri SQL plugin, native app configuration storage and versioned transactional migrations; macOS physical paths verified.
-- **OPEN:** Other OS storage paths, final study schema, transactional backup method, import conflict strategy, backup encryption and sensitive-data protection.
+- **OPEN:** Other OS storage paths, final study schema, future backup compatibility, import conflict strategy, backup encryption and sensitive-data protection.
 - **LIMITATION:** Native application storage is independent of browser eviction but not immune to disk failure, corruption, user deletion, OS cleanup or mobile app uninstallation. Backups remain necessary.
 
 ### 4.2. Cross-platform implementation policy
@@ -171,7 +172,7 @@ Before investing in the final dashboard, build a minimal Tauri prototype that:
 5. Exports a consistent backup and successfully restores it; rejects invalid imports safely.
 6. Verifies platform-specific persistence and build viability, including an early mobile test.
 
-**Status:** PARTIALLY VERIFIED on macOS ARM64 through B1/B2: packaged launch, native SQLite creation/read, and app quit/reopen persistence passed. Initial migration, repeated initialization, and failed-migration rollback were tested. B3 subsequently verified later schema migration safety and the native B2-to-B3 two-build upgrade. Device restart, backup/restore, and other platforms remain pending; the full gate has not passed.
+**Status:** PARTIALLY VERIFIED on macOS ARM64 through B1/B2: packaged launch, native SQLite creation/read, and app quit/reopen persistence passed. Initial migration, repeated initialization, and failed-migration rollback were tested. B3 subsequently verified later schema migration safety and the native B2-to-B3 two-build upgrade. B4 subsequently verified consistent backup/restore and invalid-import rejection using isolated native data. Device restart and other platforms remain pending; the full gate has not passed.
 
 **Historical, not binding:** The previous implementation was associated with the `backend365days` repository, `projects/backend365-mission-control`, branch `feature/mission-control-foundation`, Python 3.14.6 and FastAPI 0.141.1. The old FastAPI server, localhost workflow, HTML templates and former SQLite setup must not be reused automatically. This is not evidence of currently implemented functionality.
 
@@ -198,7 +199,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 8. Text constraints and more detailed note/topic modeling.
 9. Compatibility of the selected Tauri SQL plugin on platforms beyond macOS.
 10. Minimum supported OS versions, release order, installers and signing/distribution.
-11. Backup file format, validation rules, restoration semantics and optional encryption.
+11. Future backup schema compatibility, recovery-retention UI and optional encryption beyond the B4 prototype.
 12. Priorities for the first functional release after the persistence prototype passes.
 
 ## 7. Immediate next steps
@@ -218,7 +219,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 
 ### Stage 2 — Application foundation and persistence validation
 
-**Status:** IN PROGRESS — B1 completed and integrated into `main`; B2 native SQLite persistence and B3 safe schema migrations completed and validated on macOS ARM64. The remaining architectural verification gate is pending; Stage 2 is not complete.
+**Status:** IN PROGRESS — B1 completed and integrated into `main`; B2 native SQLite persistence, B3 safe schema migrations and B4 backup/restore completed and validated on macOS ARM64. The remaining architectural verification gate is pending; Stage 2 is not complete.
 
 **Objective:** Establish a functional, durable, offline-first application foundation before implementing study features.
 
@@ -226,7 +227,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 2. **COMPLETED (B2, macOS ARM64):** Implement native SQLite persistence outside browser-managed storage, with separate development and production databases.
 3. **PARTIALLY VERIFIED:** Both bundles preserved records across closure/reopening; the user independently confirmed save/close/reopen persistence. Full device restart remains untested.
 4. **COMPLETED (B3, macOS ARM64):** Versioned migrations preserve records; rollback/recovery, repeated initialization and incompatibility rejection passed automated tests. A native two-build B2-to-B3 upgrade preserved existing records and new writes through quit/reopen using isolated storage.
-5. **PENDING:** Implement consistent backup export and validated restoration, including safe rejection of invalid backups.
+5. **COMPLETED (B4, macOS ARM64):** Consistent backup export, validated restart restoration, invalid-backup rejection and retained recovery data passed automated and isolated native validation.
 6. **PENDING:** Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
 7. **ONGOING:** Record actual test results, known limitations, and remaining platform-specific requirements; B2 results are recorded below.
 
@@ -322,7 +323,44 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - SQLite could not open the native test path directly in read-only mode (including an escalated attempt: `unable to open database file`). Verification therefore read file bytes into temporary snapshots **only after confirmed process exit and no WAL file**, then queried those copies. No schema/data writes or repairs were performed on the native database by the inspection scripts. Snapshots and test records remain outside Git; no user data was removed. The worktrees, test bundles and dedicated native test data were retained.
 - Follow-up checks from the existing B3 branch's `app/`: `npm run check` **passed (9 Vitest tests)** and `npm run rust:test` **passed (4 Rust tests)**. Both isolated native build commands above passed. The follow-up changes only README/state documentation; prior B3 formatting, Clippy, Rust check and release packaging results remain recorded above, not claimed as rerun here. Documentation consistency review and Git whitespace checks passed before commit.
 
-**Remaining architectural work:** Native startup-failure UI verification, device restart, backup/restore, corruption/permissions fault injection, WebView-data clearing, signing/distribution and non-macOS/mobile viability remain open. This validates a debug-bundle application/schema transition, not a signed installer or updater delivery mechanism. Existing Stage 1/product questions remain unchanged.
+**Remaining work at the B3 milestone (backup/restore superseded by B4 below):** Native startup-failure UI verification, device restart, backup/restore, corruption/permissions fault injection, WebView-data clearing, signing/distribution and non-macOS/mobile viability remain open. This validates a debug-bundle application/schema transition, not a signed installer or updater delivery mechanism. Existing Stage 1/product questions remain unchanged.
+
+### Stage B4 — Consistent backup export and safe restore
+
+**Status:** COMPLETED AND VERIFIED for the macOS ARM64 prototype scope (2026-10-24). Stage 2 remains in progress; device restart and other platforms remain unverified.
+
+**Implementation and compatibility decisions:**
+
+- Native Rust service uses SQLite `VACUUM INTO` for consistent snapshots, including committed WAL data. Export sets snapshot-only `application_id = 0x4d434250` (MCBP) and `user_version = 1`. `.mcbackup` is plaintext standalone SQLite, without encryption/authentication. Original record fields and all SQLx history fields are preserved; physical page layout is not a compatibility guarantee. Applied migrations 1/2 remain unchanged.
+- Format 1 accepts exactly the current version-2 schema (including exact schema SQL/constraints/indexes), successful migration versions 1/2, original descriptions and checksums. No unknown schema objects or backup-supplied migrations are accepted. Unsupported older/future formats/schemas require a future deliberate compatibility change.
+- Validation operates on an isolated bounded copy: regular readable file, SQLite header/identity/version, exact schema before table queries, compatible history, record field types/size, integrity and foreign keys. Limits: 512 bytes–64 MiB per file; 1,000,000 combined UTF-8 bytes per record; 1 MiB SQLite value/row allocation limit, bounded SQL/columns/expressions/attachments, trusted schema disabled, defensive mode, 2 MiB page cache and 10-second VM progress budget. The budget does not interrupt stalled OS I/O. Existing oversized data is preserved, with export/restore rejected.
+- Native save/open dialogs expose no frontend paths or general filesystem API. Restore rejects internal application storage, non-.mcbackup files and sources with SQLite WAL/SHM/journal companions, so active databases cannot be imported as standalone snapshots. Export never overwrites an existing destination. A temporary validated snapshot is atomically published by a no-clobber hard link, with file sync and Unix directory sync; filesystems without hard-link support fail safely. Application storage and its siblings under the app-config parent are protected destinations. A tracked temporary export is cleaned after failure or on next startup; final exports are retained.
+- Restore selection is copied into a private app-managed `restore-<uuid>/incoming.db` and completely validated. UI confirmation says all current records are replaced, without merging. Cancellation removes only the unconfirmed draft. A durable no-clobber pending marker commits the decision; native reads/writes and backup actions are then blocked until full quit/reopen.
+- A first Tauri plugin acquires a process-held file lock and processes recovery before SQL plugin initialization. Startup validates the candidate again, takes a verified SQLite `original.db` snapshot, syncs an installation marker, retains the raw original DB/WAL/SHM/journal together, then installs a same-filesystem candidate. SQL plugin preload/migrations must succeed before pending state is cleared in application setup. Interruption after installation starts triggers original-snapshot rollback on the next launch. Failed/invalid recovery never silently resets records; unrecoverable I/O/recovery errors stop startup and preserve files. Invalid staged data is rejected before replacement and reported in the UI with the original DB retained.
+- All persistence SQL now lives behind narrow Rust read/insert commands using the existing plugin pool. A shared mutex serializes operations and enforces the pending-restore write prohibition. Generic frontend SQL permissions were removed (including select, which could otherwise expose writable SQL); the capability has no plugin filesystem/dialog permissions. React retains only UI/typed IPC state and the existing concurrent-save guard.
+- New direct Rust dependencies: dialog plugin 2.8.3 (rfd 0.16.1 and filesystem plugin 2.7.1 transitively); existing locked serde, uuid, tokio and libsqlite3-sys become direct dependencies, and SQLx becomes a runtime dependency. libsqlite3-sys configures limits through the SQLx exclusive handle guard. JavaScript replaces the SQL plugin package with `@tauri-apps/api`. No server, cloud account, automatic sync, study workflows or schema migration was added.
+
+**Actual automated verification:**
+
+- `npm run check`: passed TypeScript and **13 Vitest tests**, covering persistence IPC/error/concurrency behavior, application/configuration, backup controls, actionable native errors and lifecycle registration.
+- `npm run build`: passed TypeScript/Vite.
+- `npm run rust:check`: passed locked Cargo check.
+- `npm run rust:test`: passed **16 Rust tests** (4 unchanged migration tests and 12 B4 tests). B4 covers exact multiple-record IDs/values/notes/timestamps and full history; empty export/restore; restore/reopen and repeated restore; cancellation boundaries; WAL snapshot consistency; malformed/unrelated/truncated/corrupt/oversized inputs; future/checksum/schema/constraint rejection; failed file operations and staged tampering without live changes; interrupted export cleanup; recovery before/during/after raw moves; interruption before plugin acknowledgement; corrupt recovery snapshot preservation; exclusive storage lock, active/internal source rejection and development/production isolation. Unique temporary databases only; no user database paths are used.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check`: passed.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings`: passed.
+- During development, the native command future initially failed the Send requirement; fixed by running borrowed SQLx backup operations on blocking workers while keeping the main thread free. A defensive-size test exposed that integrity checks alone do not read every payload; explicit record type/byte validation was added and the test then passed. Some npm/patch commands initially used the repository root instead of `app/`; rerun in the correct directory. Initial registry access failed in the sandbox; dependencies/lockfiles were resolved with approved network access. No failed check is counted as passed.
+
+**Native macOS ARM64 verification (2026-10-24): PASSED using disposable data only.**
+
+- `npm run desktop:build -- -- --locked` passed and produced the production `.app`; it was not launched. The separate native command `npm run tauri -- build --debug --config '{"identifier":"com.missioncontrol.desktop.b4test20261024","productName":"Mission Control Backup Test"}' --bundles app -- --locked` passed. Its bundle was copied to `/private/tmp/mc-b4-native-20261024/Mission Control Backup Test.app`. Verified the identifier in `Info.plist` and absence of the dedicated storage before launch.
+- Native automation launched only that test bundle with embedded assets at `tauri://localhost`, without a development server. Saved alpha and beta synthetic records through the UI, including a literal ASCII quote and Unicode rocket via paste. Both saves succeeded. Cancelled a native save dialog, then exported `b4-records.mcbackup` into the temporary test directory. The UI reported validated export success. Read-only inspection confirmed format/application markers, two records, complete versions 1/2 history and integrity `ok`.
+- Added gamma after export. Cancelled the native open dialog, then selected the backup and cancelled the explicit replacement confirmation. All three records remained and controls were reenabled. Selected again and explicitly confirmed replacement. The input, Save and backup controls stayed disabled, and the UI instructed full quit/reopen. Quit with Command-Q; verified the initial process PID 25873 had exited (the sandbox denied the first `ps`, then approved read-only `ps` confirmed no such process). The closed database had three records and the durable pending marker; no WAL remained.
+- Reopened the same test bundle. Startup restored only alpha/beta with their original timestamps and displayed success with original recovery retention. Visual inspection confirmed the backup section remained consistent with the existing styling. Quit completely. Closed-file snapshots confirmed **all four record fields and every migration-history field exactly matched the exported backup**, while `restore-ea3a67f5-7a74-4f24-b658-656273f1acb2/original.db` exactly matched the pre-restore three-record database. Integrity/FK checks passed for all compared snapshots and `restore.pending` was cleared.
+- Reopened again and observed the same two restored records automatically. Selected a deliberately malformed temporary `.mcbackup`; the UI rejected it with the size/format guidance, retained both records and reenabled the controls. Quit the test application. Test bundle, exports, closed inspection snapshots and native recovery files were retained outside Git.
+- After the final source review, all requested checks were rerun successfully (13 Vitest, 16 Rust, frontend/native checks, formatting, all-target Clippy and locked desktop packaging). The isolated debug bundle was rebuilt into the test directory's `final/` subdirectory and launched again. Native export to `b4-final.mcbackup`, validated restore selection and confirmation cancellation passed; the final export exactly matched the earlier restored records/history. The test app was quit again.
+- `lsof -c mission-control -Fn` showed only the dedicated test bundle and its isolated native database/WAL/SHM/lock paths; production/development applications were not launched and their databases were never opened. Native-file inspection copied bytes into temporary snapshots only after full quit/no WAL; queries opened those snapshots read-only. This demonstrates app restart durability and isolated native backup/restore, not full device reboot, OS power loss or signed distribution.
+
+**Limitations and remaining validation:** Full device reboot/power-loss durability, non-macOS/mobile platforms, unsupported destination filesystems, permission/disk-full faults in the native UI, startup-failure presentation, signing/distribution and WebView-data clearing remain unverified. Directory fsync is implemented on Unix only; Windows directory crash durability remains unverified. The advisory process lock coordinates B4 instances, not old versions/external SQLite tools. Recovery snapshots and raw originals are retained without pruning or a recovery-management UI. Backups are unauthenticated plaintext; accept only trusted files and protect exports. Stage 2 and the broader architectural gate remain open.
 
 ### Next development milestone
 

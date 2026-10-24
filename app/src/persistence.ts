@@ -1,16 +1,21 @@
-import Database from "@tauri-apps/plugin-sql";
+import { invoke } from "@tauri-apps/api/core";
 
-export const DATABASE_URL = "sqlite:mission-control.db";
 export interface TestRecord {
   id: string;
   value: string;
   created_at: string;
 }
 
-type Connection = Pick<Database, "execute" | "select">;
+interface Connection {
+  readRecords(): Promise<TestRecord[]>;
+  insertRecord(id: string, value: string): Promise<void>;
+}
 
 // Injectable boundary keeps native IPC out of tests and SQL out of components.
-export function createPersistence(load: () => Promise<Connection> = () => Database.load(DATABASE_URL)) {
+export function createPersistence(load: () => Promise<Connection> = async () => ({
+  readRecords: () => invoke<TestRecord[]>("read_records"),
+  insertRecord: (id, value) => invoke<void>("insert_record", { id, value }),
+})) {
   let connection: Promise<Connection> | undefined;
   let writing = false;
   function initialize() {
@@ -22,9 +27,7 @@ export function createPersistence(load: () => Promise<Connection> = () => Databa
   }
   async function readRecords(): Promise<TestRecord[]> {
     const db = await initialize();
-    return db.select<TestRecord[]>(
-      "SELECT id, value, created_at FROM persistence_test_records ORDER BY created_at ASC, id ASC",
-    );
+    return db.readRecords();
   }
   async function insertRecord(input: string): Promise<void> {
     const value = input.trim();
@@ -33,10 +36,7 @@ export function createPersistence(load: () => Promise<Connection> = () => Databa
     writing = true;
     try {
       const db = await initialize();
-      await db.execute(
-        "INSERT INTO persistence_test_records (id, value) VALUES ($1, $2)",
-        [crypto.randomUUID(), value],
-      );
+      await db.insertRecord(crypto.randomUUID(), value);
     } finally {
       writing = false;
     }

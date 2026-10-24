@@ -16,9 +16,8 @@ The project prioritizes accurate time tracking, meaningful statistics, a clean u
 - **Progress Dashboard:** Monitor total study hours, current streaks, personal records, and accumulated progress.
 - **Activity Heatmap:** Visualize daily study activity through a GitHub-style contribution calendar.
 - **Study History:** Review, edit, and organize historical study records.
-- **Backup and Restore:** Export and restore personal data through portable backups.
 
-These are approved product directions and requirements, not claims of completed functionality.
+These are approved product directions and requirements, not claims of completed study functionality. A backup/restore prototype is implemented as part of the foundation; see B4 below.
 
 ## Design Principles
 
@@ -42,7 +41,7 @@ The implemented foundation uses:
 |---|---|---|
 | Application framework | Tauri 2 | Approved |
 | Frontend | React, TypeScript, Vite | Implemented; macOS foundation validated |
-| Native integration | Rust | Tauri entry point and versioned SQLite migration registration implemented |
+| Native integration | Rust | Versioned migrations, guarded persistence commands, backup validation and restart restore |
 | Local database | SQLite via official Tauri SQL plugin | B2 persistence and B3 two-build schema upgrade validated on macOS ARM64 |
 
 Broader platform support and the production study schema still require implementation and validation.
@@ -55,7 +54,7 @@ The project is being rebuilt from scratch while preserving previously approved f
 
 B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade. The native two-build upgrade from `b75d65f` to `52dadb7` also passed with a dedicated test identifier.
 
-Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. Backup/restore and additional platforms remain pending architectural verification. Study workflows are not implemented.
+Stage 2 remains in progress. Full device restart has not been tested by the user or verified in the recorded implementation checks. B4 implements consistent export and restart-based restore; native B4 validation is recorded below. Additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -75,7 +74,7 @@ The structure will evolve as implementation progresses.
 
 ## Getting Started
 
-Stage B2 extends the native welcome screen with a temporary SQLite persistence test. Study features are not implemented.
+The native welcome screen includes temporary SQLite persistence and B4 backup/restore controls. Study features are not implemented.
 
 ### Prerequisites
 
@@ -114,14 +113,14 @@ Automated tests cover the TypeScript persistence boundary, native SQLite migrati
 
 ## SQLite persistence prototype
 
-The official `tauri-plugin-sql` (SQLite feature) and `@tauri-apps/plugin-sql` use `sqlite:mission-control.db`. Rust registers migration versions 1 and 2 from `app/src-tauri/migrations/`. Version 2 (`0002_add_test_record_note.sql`) adds `note TEXT NOT NULL DEFAULT ''` without changing the existing persistence interface. The SQL plugin preloads the database and applies transactional SQLx migrations during native startup; a migration error aborts startup before database operations are available. This also avoids the plugin 2.6.0 load-retry path consuming migration registration after a failed migration. The plugin configuration requires a direct `serde_json` dependency for Tauri context generation; it was already present transitively. Initialization does not seed, delete, replace, or reset records. Runtime load/query errors are displayed in the test interface; migration errors now fail native startup. SQL lives in a typed persistence module, with parameter binding and a concurrent-write guard.
+The official Rust `tauri-plugin-sql` (SQLite feature) owns the `sqlite:mission-control.db` pool and migration preload. React uses `@tauri-apps/api` commands rather than generic SQL plugin access. Rust registers migration versions 1 and 2 from `app/src-tauri/migrations/`. Version 2 (`0002_add_test_record_note.sql`) adds `note TEXT NOT NULL DEFAULT ''` without changing the existing persistence interface. The SQL plugin preloads the database and applies transactional SQLx migrations during native startup; a migration error aborts startup before database operations are available. This also avoids the plugin 2.6.0 load-retry path consuming migration registration after a failed migration. The plugin configuration requires a direct `serde_json` dependency for Tauri context generation; it was already present transitively. Ordinary initialization does not seed, delete, replace, or reset records; explicitly confirmed B4 restoration runs before it. Runtime load/query errors are displayed in the test interface; migration errors now fail native startup. SQL now runs behind narrow Rust read/insert commands with parameter binding and a shared operation lock; React uses an injectable typed IPC boundary. Confirmed restores block native writes until restart.
 
 On macOS the plugin resolves the native application configuration directory under `~/Library/Application Support/`:
 
 - Production: `com.missioncontrol.desktop/mission-control.db`.
 - Development: `com.missioncontrol.desktop.dev/mission-control.db`.
 
-`npm run desktop:dev` explicitly loads `src-tauri/tauri.dev.conf.json`, separating development storage without changing the production identifier. Plain `tauri dev` does not load that override; use the npm command. Production packaging uses the base configuration. Permissions enable only SQL load, select, and execute. There is no browser-storage fallback.
+`npm run desktop:dev` explicitly loads `src-tauri/tauri.dev.conf.json`, separating development storage without changing the production identifier. Plain `tauri dev` does not load that override; use the npm command. Production packaging uses the base configuration. The main-window capability grants no generic SQL, filesystem or dialog plugin permissions; narrow application commands own all operations, including native dialogs. There is no browser-storage fallback.
 
 ### Schema migration safety (B3)
 
@@ -144,7 +143,31 @@ For future native upgrade checks, use a fresh dedicated identifier shared by bot
 5. In Finder, use **Go → Go to Folder** for `~/Library/Application Support/com.missioncontrol.desktop/`. Confirm `mission-control.db` is outside the repository. Do not delete it to recover from errors.
 6. Repeat using `npm run desktop:dev` with a different value; production and development records should be separate. Stop development, then reopen the production bundle to confirm isolation.
 
-This is a temporary persistence prototype, not the final study schema. Device reboot, backup/restore, signing, native startup-failure presentation, and other platforms require later validation.
+This is a temporary persistence prototype, not the final study schema. Device reboot, signing, native startup-failure presentation, and other platforms require later validation. B4 backup/restore is described below.
+
+## Backup and restore prototype (B4)
+
+Use **Export Backup** to choose a new `.mcbackup` filename in a native save dialog. The Rust service uses SQLite `VACUUM INTO`, which includes committed WAL data in a consistent snapshot, then validates the result. It publishes the file atomically without overwriting existing files. Choose a new filename for each export. Destinations anywhere beneath the parent of the application configuration directory are blocked to protect application storage, including development/production siblings. The destination filesystem must support hard links; unsupported filesystems fail safely. Exports require free space for the snapshot.
+
+Use **Restore Backup** to choose a local file. Internal application storage and files with SQLite WAL/SHM/journal companions cannot be selected as backups. Rust copies at most 64 MiB into a private staging directory and validates that copy. **Cancel** leaves the current database unchanged. **Replace data on next startup** explicitly confirms replacement of all records, without merging. Quit the application completely (Command-Q on macOS), then reopen the same bundle. Writes remain blocked after confirmation. The application processes restoration before the SQL plugin opens or migrates the database; records refresh only in the new process after successful startup.
+
+### Format and compatibility
+
+Format 1 is a standalone SQLite snapshot with `application_id = 0x4d434250` (`MCBP`) and `user_version = 1`, set only on the exported snapshot. No live schema or applied migration files are modified by export. Record IDs, values, notes, timestamps and complete SQLx migration history are preserved; physical page layout is not part of the format. Backups contain plaintext data, without encryption, authentication or a signature: use trusted sources and protect exported files.
+
+This initial format accepts exactly the current B3 schema and migration versions 1/2, including descriptions and SQLx checksums. Unknown/future versions, altered constraints, extra schema objects and unrelated files are rejected; no backup-supplied migrations run. Future schema support must deliberately extend this compatibility policy. Validation checks the SQLite header, application/version identity, exact schema, migration history, text-field types, `integrity_check` and `foreign_key_check`. Limits are 512 bytes–64 MiB per file and 1,000,000 combined UTF-8 bytes per record, plus SQLite allocation/SQL/expression limits, a 2 MiB page cache and a 10-second VM progress budget (not a guarantee against stalled filesystem I/O). Larger existing records are never reset; export/restore reports an error.
+
+### Recovery and storage lifecycle
+
+A process-held native file lock prevents concurrent B4 instances for the same application storage. Confirmed restores have a durable, atomically published marker. Before replacement, startup creates and validates `restore-<uuid>/original.db` using SQLite, then persists an installation marker. The original main database and any `-wal`, `-shm`, and `-journal` files are retained together in that recovery directory. The replacement is prepared on the same filesystem and moved into place only before SQL plugin setup. The pending marker is removed only after plugin preload/migrations succeed. If interrupted after installation begins, the next startup validates and reinstalls the original snapshot before opening SQL. Invalid recovery snapshots stop startup without displacing existing files. Keep all recovery files when troubleshooting; never delete the live database to fix an error.
+
+Recovery copies are retained without automatic pruning or a recovery-management UI. Unconfirmed staging directories and tracked interrupted export temporary files are cleaned on a later startup; published exports remain untouched. Files are flushed, and directories are synced on Unix. Windows directory durability, filesystem-specific behavior, OS power loss and applications/tools that ignore the process lock remain outside verified guarantees. External modification of application storage while Mission Control runs is unsupported.
+
+Dependencies added directly in Rust are `tauri-plugin-dialog` (native dialogs; `rfd` and `tauri-plugin-fs` transitively), `serde` (structured errors), `uuid` (private operation IDs), `tokio` (shared operation mutex), and `libsqlite3-sys` (limits on SQLx's guarded native handle); SQLx moves from test-only to runtime use. Except for the dialog dependency tree, these were already present in Cargo.lock. The JavaScript SQL package is replaced by the Tauri core API. No frontend filesystem access is granted, and no cloud or network service is introduced.
+
+**Validation (macOS ARM64):** Native dialogs, cancellation, confirmed restore through full quit/reopen, exact restored records/history, retained original recovery data, another reopening, and malformed-file rejection passed using only the dedicated `com.missioncontrol.desktop.b4test20261024` bundle/storage. Production/development user databases were not opened. The locked desktop bundle build passed.
+
+**Automated verification:** 13 Vitest tests and 16 Rust tests passed, including multiple/empty records, exact records/history, WAL snapshots, restore/reopen, repeated restore, cancellation boundaries, incompatible/corrupt/truncated/oversized files, migration/checksum rejection, failed staging, interrupted export cleanup, replacement rollback, invalid recovery preservation and dev/prod isolation. Tests use unique temporary directories only. TypeScript/Vite, locked Rust check/test, rustfmt and Clippy with all targets passed. Native packaging and UI validation status are recorded in [Project State](docs/STATE.md#stage-b4--consistent-backup-export-and-safe-restore). Stage 2 remains in progress.
 
 ## Documentation
 

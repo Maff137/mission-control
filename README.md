@@ -54,7 +54,7 @@ The project is being rebuilt from scratch while preserving previously approved f
 
 B1 is completed and integrated into `main`. B2 native SQLite persistence is implemented and validated on macOS ARM64, including separate development/production databases and record retention after closing and reopening both bundles. The user independently confirmed save/close/reopen persistence. B3 automated verification passed 9 Vitest tests and 4 Rust tests, including the B2-to-B3 SQLite upgrade. The native two-build upgrade from `b75d65f` to `52dadb7` also passed with a dedicated test identifier.
 
-B5 adds isolated process-termination and filesystem-fault integration tests, plus a native B2→B3→B4→current upgrade lineage and packaged SIGKILL recovery. Its verified scope and remaining acceptance gaps are recorded in [B5 resilience evidence](docs/B5-RESILIENCE-REPORT.md). B5 is partially verified; Stage 2 remains in progress. Full device restart remains awaiting independent user evidence. Native macOS acceptance now covers real APFS capacity/permission failures, eight packaged restore interruption boundaries, startup-error presentation and WebView-data quarantine. B4 implements consistent export and restart-based restore; native B4 validation is recorded below. Additional platforms remain pending architectural verification. Study workflows are not implemented.
+B5 adds isolated process-termination and filesystem-fault integration tests, plus a native B2→B3→B4→current upgrade lineage and packaged SIGKILL recovery. Its verified scope and remaining acceptance gaps are recorded in [B5 resilience evidence](docs/B5-RESILIENCE-REPORT.md). B5 is partially verified; Stage 2 remains in progress. M1 full device restart is **PASS on macOS ARM64** (2026-10-25), using an isolated disposable bundle with two synthetic records and unchanged SQLite records/migration history. Native macOS acceptance now covers real APFS capacity/permission failures, eight packaged restore interruption boundaries, startup-error presentation and WebView-data quarantine. B4 implements consistent export and restart-based restore; native B4 validation is recorded below. Additional platforms remain pending architectural verification. Study workflows are not implemented.
 
 No production-ready release or installation package is currently available.
 
@@ -64,7 +64,7 @@ B6 is **PARTIALLY VERIFIED**; Stage 2 remains **IN PROGRESS**. Platform overlays
 
 Local macOS verification passed all seven checks (14 Vitest, 25 Rust tests, one ignored subprocess helper), release/debug packaging and isolated native recovery, UI export/restore/reopen, invalid-import rejection, WebView independence and safe exFAT export failure.
 
-Linux x64 CI passed all checks and produced an unsigned `.deb`. Windows x64 passed all checks (14 Vitest, 24 Rust tests, one ignored helper) and generated an unsigned NSIS installer with offline WebView2 on retry after an initial download failure. CI does not establish packaged native launch or persistence. Native mobile testing requires missing SDKs; reboot and real power loss remain untested. See [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md) for current evidence and acceptance procedures.
+Linux x64 CI passed all checks and produced an unsigned `.deb`. Windows x64 passed all checks (14 Vitest, 24 Rust tests, one ignored helper) and generated an unsigned NSIS installer with offline WebView2 on retry after an initial download failure. CI does not establish packaged native launch or persistence. Native mobile testing requires missing SDKs; reboot on other platforms and real power loss remain untested. See [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md) for current evidence and acceptance procedures.
 
 ## Repository Structure
 
@@ -151,7 +151,7 @@ For future native upgrade checks, use a fresh dedicated identifier shared by bot
 5. In Finder, use **Go → Go to Folder** for `~/Library/Application Support/com.missioncontrol.desktop/`. Confirm `mission-control.db` is outside the repository. Do not delete it to recover from errors.
 6. Repeat using `npm run desktop:dev` with a different value; production and development records should be separate. Stop development, then reopen the production bundle to confirm isolation.
 
-This is a temporary persistence prototype, not the final study schema. Device reboot, signing and other platforms require later validation; native startup-failure presentation is verified in the B5 acceptance scope. B4 backup/restore is described below.
+This is a temporary persistence prototype, not the final study schema. M1 device reboot passed on macOS ARM64; signing and other platforms require later validation; native startup-failure presentation is verified in the B5 acceptance scope. B4 backup/restore is described below.
 
 ## Backup and restore prototype (B4)
 
@@ -201,7 +201,7 @@ python3 scripts/native-acceptance.py 'src-tauri/target/debug/bundle/macos/Missio
 
 The macOS controller requires Python 3, verifies the bundle identifier and actual Tauri storage signal, kills/reaps only its own children, compares copied SQLite/WAL files, and retains isolated fixtures, logs and `results.json` outside Git. It constructs the confirmed restore input; the interruptions themselves occur inside the real packaged startup. Native UI/volume procedures and timing limits are in the B5 report. Never point these procedures at production/development identifiers or change HOME to infer storage isolation.
 
-**B5 remains partially verified.** SIGKILL does not establish power-loss durability. Independent device-reboot evidence (M1), power loss (M2), other platforms/filesystems and signed updater delivery (M5) remain pending. Interruption inside an individual kernel operation or midway through SQL plugin initialization was not tested. Stage 2 stays open. See the [B5 report](docs/B5-RESILIENCE-REPORT.md) for exact commands, per-scenario results, reproducible native procedures and limitations.
+**B5 remains partially verified.** SIGKILL does not establish power-loss durability. M1 device reboot is **PASS on macOS ARM64** (2026-10-25); local pre/post dumps, integrity files and boot timestamps corroborate the user-reported acceptance script result. Power loss (M2) and remaining native cross-platform/filesystem and signed distribution requirements (M5) remain pending. Interruption inside an individual kernel operation or midway through SQL plugin initialization was not tested. Stage 2 stays open. See the [B5 report](docs/B5-RESILIENCE-REPORT.md) for exact commands, per-scenario results, reproducible native procedures and limitations.
 
 ## Documentation
 

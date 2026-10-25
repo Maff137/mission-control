@@ -58,6 +58,14 @@ B5 adds isolated process-termination and filesystem-fault integration tests, plu
 
 No production-ready release or installation package is currently available.
 
+## B6 compatibility verification
+
+B6 is **PARTIALLY VERIFIED**; Stage 2 remains **IN PROGRESS**. Platform overlays remove the macOS-only packaging restriction without changing identity, CSP, migrations or native storage. The read-only GitHub Actions compatibility workflow uses `npm ci`, locked Cargo commands and unsigned Windows x64/Linux x64 packaging; it uploads no artifacts and publishes no releases.
+
+Local macOS verification passed all seven checks (14 Vitest, 25 Rust tests, one ignored subprocess helper), release/debug packaging and isolated native recovery, UI export/restore/reopen, invalid-import rejection, WebView independence and safe exFAT export failure.
+
+Linux x64 CI passed all checks and produced an unsigned `.deb`. Windows x64 passed all checks (14 Vitest, 24 Rust tests, one ignored helper) and generated an unsigned NSIS installer with offline WebView2 on retry after an initial download failure. CI does not establish packaged native launch or persistence. Native mobile testing requires missing SDKs; reboot and real power loss remain untested. See [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md) for current evidence and acceptance procedures.
+
 ## Repository Structure
 
 ```text
@@ -100,7 +108,7 @@ npm run rust:check     # Cargo check using Cargo.lock
 npm run rust:test      # Native SQLite migration/durability tests
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
-npm run desktop:build -- -- --locked  # Production macOS .app bundle
+npm run desktop:build -- -- --locked  # Native package selected for the host OS
 # Isolated development .app bundle for native persistence checks:
 npm run tauri -- build --debug --config src-tauri/tauri.dev.conf.json --bundles app -- --locked
 ```
@@ -206,7 +214,3 @@ The project state document is the authoritative reference for the current develo
 ---
 
 **Mission Control — Track your time. Build consistency. Understand your progress.**
-
-## B6 compatibility verification
-
-B6 is **PARTIALLY VERIFIED**; Stage 2 remains **IN PROGRESS**. Platform overlays remove the macOS-only packaging restriction without changing identity, CSP, migrations or native storage. The read-only GitHub Actions compatibility workflow uses `npm ci`, locked Cargo commands and unsigned Windows x64/Linux x64 packaging; it uploads no artifacts and publishes no releases. Workflow definition alone is not execution evidence. Native mobile testing requires missing SDKs; reboot and real power loss remain untested. See [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md) for current evidence and acceptance procedures.

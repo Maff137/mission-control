@@ -1,7 +1,7 @@
 # Mission Control — Project State
 
 **Last updated:** 2026-10-25\
-**Phase:** B5 automated resilience scope and isolated native checks passed on macOS ARM64; B5 remains partially verified and Stage 2 remains open.
+**Phase:** B6 compatibility verification; B5/B6 remain PARTIALLY VERIFIED and Stage 2 remains IN PROGRESS.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -230,7 +230,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 4. **COMPLETED (B3, macOS ARM64):** Versioned migrations preserve records; rollback/recovery, repeated initialization and incompatibility rejection passed automated tests. A native two-build B2-to-B3 upgrade preserved existing records and new writes through quit/reopen using isolated storage.
 5. **COMPLETED (B4, macOS ARM64):** Consistent backup export, validated restart restoration, invalid-backup rejection and retained recovery data passed automated and isolated native validation.
 6. **PARTIALLY VERIFIED (B5, macOS ARM64):** Integration/resilience tests and isolated native upgrade/process/startup checks passed. Native filesystem and SQLite write-failure handling (M3), eight packaged restore interruption boundaries (M4), and startup-error presentation and WebView storage independence (M6) passed within the documented scope. Full device reboot (M1) awaits independent user verification; real power loss (M2) and cross-platform/filesystem/distribution compatibility (M5) remain pending. Interruptions inside individual filesystem operations and midway through SQL plugin initialization remain unverified; see B5 below.
-7. **PENDING:** Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
+7. **PARTIALLY VERIFIED (B6):** Platform packaging overlays, Windows/Linux CI and early mobile static/toolchain inspection implemented. macOS final checks/native scenarios passed; see B6 report for remote results and exact blockers. Native Windows/Linux/mobile execution, reboot/power-loss and distribution acceptance remain pending.
 8. **ONGOING:** Record actual test results, known limitations, and remaining platform-specific requirements; B2 results are recorded below.
 
 **Completion criteria:** The application launches without a manually managed server, operates offline, persists data reliably, and demonstrates safe migration and backup/restore behavior.
@@ -389,6 +389,14 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - **Validation:** All seven requested checks passed on final code: `npm run check` (13 Vitest), `npm run build`, locked Rust check/test (24 passed, zero failed, one subprocess helper ignored), rustfmt, locked all-target Clippy with warnings denied, and locked release `.app` build. Additional feature-enabled all-target Clippy and both eight-boundary native matrix runs passed. See the [B5 report](B5-RESILIENCE-REPORT.md#native-acceptance-follow-up--m3-m4-and-m6) for commands, retained evidence locations, per-scenario results, release-isolation verification and corrected preparation failures.
 - **Safety/limitations:** Only fresh dedicated identifiers `com.missioncontrol.acceptance.b5native20261024a` and `...b` were launched. Production/development databases were never accessed. No host filesystem filling, OS restart, power-loss experiment, security-setting change, global cache clearing or cross-platform test occurred. APFS image and synthetic artifacts remain outside Git; test permissions were restored and the image detached. M1/M2/M5 remain pending, alongside filesystem/controller durability, distribution and existing retention/platform limitations.
 
+### Stage B6 — Cross-platform compatibility and Stage 2 acceptance
+
+**Status (2026-10-25): PARTIALLY VERIFIED; Stage 2 IN PROGRESS.** Work starts from clean fetched `origin/main` at `6fd860c`. B6 adds automatic Windows NSIS (offline WebView2) and Linux Debian packaging overlays, removes the forced macOS-only npm build argument, and adds a Windows/Linux compatibility workflow with read-only repository permissions, locked application dependencies, no artifact upload and no release/signing operations. Regression coverage checks platform packaging invariants and exact backup/restore/reopen through Unicode paths with no-clobber publication.
+
+Initial unchanged-code macOS checks passed: 13 Vitest, 24 Rust tests with one ignored child helper, frontend build, Rust check, formatting and all-target Clippy. Final-code macOS validation passed all seven checks (14 Vitest, 25 Rust passed, one helper ignored), release/debug packaging, eight packaged interruption boundaries and isolated native UI export/restore/reopen, invalid import, WebView quarantine and fail-closed startup. Native exFAT export failed safely without partial publication; retry on APFS matched exact data/history.
+
+Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, checks and unsigned .deb packaging). Windows x64 passed 14 Vitest, 24 Rust with one ignored helper, checks and release compilation; initial packaging failed at the Microsoft offline WebView2 download with Peer disconnected, then a failed-job rerun passed all checks and produced the unsigned NSIS installer with offline WebView2. Run 40225328483 attempt 2 succeeded on implementation commit 8249e8c. These are service-test/build results, not native packaged-app execution or installed persistence. Detailed run/commit evidence is in [B6 compatibility report](B6-COMPATIBILITY-REPORT.md). Full Xcode, Android SDK/NDK and mobile Rust targets are unavailable. M1/M2 remain NOT TESTED; M5 remains PARTIALLY VERIFIED. No acceptance policy, supported-platform commitment, applied migration, identifier, production security or study behavior changes.
+
 ### Next development milestone
 
 After Stage 2 passes its acceptance criteria, implement the first tested functional workflow:
@@ -404,9 +412,3 @@ Subsequent features, including timer recovery, multi-area allocations, calendar 
 **Verification for this documentation task:** Reviewed all three documents against the B2 implementation, npm scripts, Rust migration/tests, and development configuration. Preserved the recorded B2 results (8 Vitest and 2 Rust tests passed); application tests and manual persistence checks were not rerun for this documentation-only change. The user-confirmed app restart check is recorded separately from implementation validation; device restart remains unverified. Documentation checks: `git diff --check` passed, the complete diff was reviewed for consistency and documentation-only scope, and `AGENTS.md` was verified below the 8,000-character limit.
 
 **Maintenance rule:** Update both `docs/STATE.md` and `README.md` after every development task, before the final commit and push. Update each stage as work progresses. Mark tasks as completed only after implementation and appropriate validation. Never equate `APPROVED`, `RECOMMENDED`, or `PLANNED` with `IMPLEMENTED` or `TESTED`.
-
-### Stage B6 — Cross-platform compatibility and Stage 2 acceptance
-
-**Status (2026-10-25): PARTIALLY VERIFIED; Stage 2 IN PROGRESS.** Work starts from clean fetched `origin/main` at `6fd860c`. B6 adds automatic Windows NSIS (offline WebView2) and Linux Debian packaging overlays, removes the forced macOS-only npm build argument, and adds a Windows/Linux compatibility workflow with read-only repository permissions, locked application dependencies, no artifact upload and no release/signing operations. Regression coverage checks platform packaging invariants and exact backup/restore/reopen through Unicode paths with no-clobber publication.
-
-Initial unchanged-code macOS checks passed: 13 Vitest, 24 Rust tests with one ignored child helper, frontend build, Rust check, formatting and all-target Clippy. Final-code validation and remote CI results are being collected in [B6 compatibility report](B6-COMPATIBILITY-REPORT.md); no Windows/Linux execution is yet claimed. Full Xcode, Android SDK/NDK and mobile Rust targets are unavailable. M1/M2 remain NOT TESTED; M5 remains PARTIALLY VERIFIED. No acceptance policy, supported-platform commitment, applied migration, identifier, production security or study behavior changes.

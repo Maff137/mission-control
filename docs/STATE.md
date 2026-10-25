@@ -437,8 +437,6 @@ Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, check
 - Distinguished planned macOS/Windows/Linux/Android/iOS support from recorded macOS ARM64 foundation and scoped Windows x64/Linux x64 installed-runtime evidence. Android/iOS native compatibility and minimum OS versions remain unverified/open; no general platform support is declared. Existing B5/B6 partial verification and Stage 2 status are unchanged.
 - Documentation-only validation: reviewed the README/state diff against existing platform decisions and B6 evidence; `git diff --check` passed. Application tests and builds were not rerun. Only README.md and docs/STATE.md were updated and synchronized.
 
-### Next development milestone
-
 ### Stage U — macOS In-App Updates and Private Alpha Distribution
 
 **Decision date:** 2026-10-25  

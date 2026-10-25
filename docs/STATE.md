@@ -430,6 +430,12 @@ Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, check
 
 **Documentation-only verification:** Only README.md and docs/STATE.md are changed. Existing B5/B6 evidence and historical results are preserved; no application tests or builds were run. Validation is limited to `git diff --check` and review of the documentation diff.
 
+### Platform rationale documentation (2026-10-25)
+
+- Added README's **Why Tauri and Web Technologies?** section to explain the existing approved installable application direction, shared React/TypeScript/Vite UI, Tauri 2 native integration and offline native SQLite persistence. The primary PWA alternative remains rejected because browser-managed storage does not meet the approved native storage and reliability requirements; no architectural decision changed.
+- Distinguished planned macOS/Windows/Linux/Android/iOS support from recorded macOS ARM64 foundation and scoped Windows x64/Linux x64 installed-runtime evidence. Android/iOS native compatibility and minimum OS versions remain unverified/open; no general platform support is declared. Existing B5/B6 partial verification and Stage 2 status are unchanged.
+- Documentation-only validation: reviewed the README/state diff against existing platform decisions and B6 evidence; `git diff --check` passed. Application tests and builds were not rerun. Only README.md and docs/STATE.md were updated and synchronized.
+
 ### Next development milestone
 
 After Stage 2 passes its acceptance criteria, implement the first tested functional workflow:

@@ -46,6 +46,12 @@ The implemented foundation uses:
 
 Broader platform support and the production study schema still require implementation and validation.
 
+### Why Tauri and Web Technologies?
+
+Mission Control is designed as an installable, cross-platform application, not a browser-hosted website. React, TypeScript, and Vite provide a shared web-based UI; Tauri 2 integrates that UI with native OS capabilities. Native SQLite storage supports offline use and durable persistence in application-managed files, independently of browser-managed data. A PWA was rejected as the primary platform because browser-managed storage does not meet the approved native storage and reliability requirements.
+
+**Planned platform support:** macOS, Windows, Linux, Android, and iOS. **Verified compatibility:** macOS ARM64 foundation checks and scoped Windows x64/Linux x64 installed-runtime checks, as detailed in the [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md). Android/iOS native compatibility remains unverified; minimum OS versions and general platform support are not yet established. B5/B6 remain partially verified and Stage 2 remains in progress.
+
 ## Development Status
 
 **Current phase: Project foundation and architectural validation.**

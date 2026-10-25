@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-25\
 **Phase:** B6 compatibility verification; B5/B6 remain PARTIALLY VERIFIED and Stage 2 remains IN PROGRESS.
-**Immediate delivery priority (2026-10-25):** Implement and validate optional in-app updates for macOS ARM64 before starting Stage C study features. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
+**Immediate delivery priority (2026-10-25):** Prepare study-data safety, then deliver a usable personal study workflow and stable macOS ARM64 installation before implementing the mandatory MVP updater. MVP target: November 2, 2026; targets are not completion guarantees. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -11,6 +11,8 @@
 - **APPROVED:** Product behavior or technical direction explicitly accepted for the rebuild.
 - **RECOMMENDED:** Engineering proposal selected as the preferred direction, pending implementation and/or validation.
 - **PLANNED:** Intended future work, not necessarily included in the first release.
+- **IMPLEMENTED:** Present in the codebase; does not by itself establish acceptance.
+- **VERIFIED:** Supported by recorded checks within their stated scope; not a universal guarantee.
 - **OPEN:** Decision not finalized.
 - **HISTORICAL:** Old implementation detail, not a requirement for the rebuild.
 
@@ -156,6 +158,17 @@
 - **OPEN:** Other OS storage paths, final study schema, future backup compatibility, import conflict strategy, backup encryption and sensitive-data protection.
 - **LIMITATION:** Native application storage is independent of browser eviction but not immune to disk failure, corruption, user deletion, OS cleanup or mobile app uninstallation. Backups remain necessary.
 
+### 4.1.1. Personal-use data protection policy (approved 2026-10-25)
+
+- **APPROVED:** Preserve the production application identifier `com.missioncontrol.desktop` and its existing native SQLite storage. Never delete, reset, overwrite, or repurpose the production database to resolve development or migration problems.
+- **APPROVED:** Development, automated tests, experimental builds, and destructive acceptance tests must use separate application identifiers and isolated databases. Never execute destructive acceptance scenarios against personal study data.
+- **APPROVED:** Previously applied migrations are immutable; add forward-only migrations. Updates must preserve existing records, identifiers, timestamps, and migration history.
+- **APPROVED / PLANNED WORK:** Extend B4's existing schema validation and backup compatibility implementation before relying on backups for the new study schema. Current B4 support remains limited to the documented B3 prototype schema.
+- **APPROVED:** Require compatible, verified backups stored outside application-managed storage before risky migrations or production upgrades. Retained internal recovery copies do not replace these external backups.
+- **APPROVED:** Failed migrations or startup errors must preserve existing data and report an error rather than silently reset storage.
+- **APPROVED:** Every future production release must pass regression and migration checks using representative disposable data.
+- **LIMITATION:** No implementation can claim absolute immunity to data loss. Preserve recovery procedures and documented limitations, including the existing B4/B5/B6 risks and unresolved acceptance requirements.
+
 ### 4.2. Cross-platform implementation policy
 
 - **APPROVED:** Maintain a shared codebase rather than independently building five unrelated applications.
@@ -202,7 +215,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 9. Compatibility of the selected Tauri SQL plugin on platforms beyond macOS.
 10. Minimum supported OS versions, release order, installers and signing/distribution.
 11. Future backup schema compatibility, recovery-retention UI and optional encryption beyond the B4 prototype.
-12. Detailed scope and release schedule for study features after the macOS updater acceptance gate. Updater-first delivery is APPROVED; the study workflow remains deferred, not cancelled.
+12. Detailed study-feature scope and scheduling within the approved November 2, 2026 MVP target; implementation and acceptance remain pending. The approved sequence below supersedes updater-first delivery.
 
 ## 7. Immediate next steps
 
@@ -426,7 +439,7 @@ Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, check
 - **Required before Stage 2 closure:** Resolve M2 and all essential macOS data-integrity acceptance gaps. Retain the existing requirements for offline packaged operation, native storage, exact record/migration preservation across reopen/reboot and compatible updates, safe backup/restore and invalid-input rejection, fault recovery, actionable startup errors and WebView independence. M1 is PASS only within the recorded macOS ARM64 scope. Review remaining intra-operation and mid-SQL-initialization gaps explicitly; do not infer coverage from adjacent passing boundaries.
 - **M2 remains OPEN / NOT TESTED:** The deferral of advanced physical power-loss testing is not an M2 pass or waiver. Before closure, document the bounded macOS durability guarantees and resolve M2 through an authorized isolated test with recorded filesystem/cache/flush assumptions and exact recovery comparisons, or an explicit approved scope/risk decision addressing the remaining M2 evidence gap. SIGKILL, ordinary reboot and successful fsync alone do not resolve it. Any physical durability guarantee requires corresponding evidence.
 - **Windows/Linux coverage:** Preserve the distinction between CI checks/builds and verified installed native runtime. B6 records Windows Server 2022 x64 and Ubuntu 24.04 x64 installation, startup, exact termination/relaunch preservation, UI Save/export and startup restore; restore confirmation was controller-created. Linux disconnected-network runtime passed; Windows disconnected-network operation, UI restore selection/confirmation/cancel/invalid import, reboot, filesystem-specific behavior and broader OS coverage remain gaps. These do not block the macOS foundation gate, and no general Windows/Linux support is declared. A future desktop acceptance milestone must resolve the relevant native gaps and define supported OS/filesystem versions before claiming support.
-- **Deferred to explicit future milestones:** Android/iOS acceptance; public distribution; signing/notarization and signed installer/updater preservation; advanced physical power-loss/storage-controller testing across hardware and filesystems. These remain requirements for their respective future claims, not completed or abandoned work. Mobile acceptance requires toolchains, device/provider backup integration, native persistence/recovery and offline verification. Distribution acceptance requires supported minimum versions, clean installation prerequisites, platform security checks and data-preserving signed updates. Advanced power-loss acceptance requires authorized disposable hardware/storage, documented cache/flush guarantees, controlled cuts at durability boundaries and exact post-recovery records/history/originals/integrity checks.
+- **Deferred to explicit future milestones:** Android/iOS acceptance; public distribution; paid Apple signing/notarization and broader signed installer acceptance; advanced physical power-loss/storage-controller testing across hardware and filesystems. Signed updater preservation is now required for the MVP under the approved delivery plan and Stage U below. These remain requirements for their respective future claims, not completed or abandoned work. Mobile acceptance requires toolchains, device/provider backup integration, native persistence/recovery and offline verification. Distribution acceptance requires supported minimum versions, clean installation prerequisites, platform security checks and data-preserving signed updates. Advanced power-loss acceptance requires authorized disposable hardware/storage, documented cache/flush guarantees, controlled cuts at durability boundaries and exact post-recovery records/history/originals/integrity checks.
 - **Residual risks:** Physical-flush/controller durability remains unproven; Windows directory sync is unverified; hard-link-dependent filesystems and external tools ignoring advisory locks remain limitations. Retained recovery copies lack pruning UI and backups remain unauthenticated plaintext. Keep these limits visible in future acceptance decisions; narrowing the foundation platform does not remove data-preservation obligations or authorize destructive tests.
 
 **Documentation-only verification:** Only README.md and docs/STATE.md are changed. Existing B5/B6 evidence and historical results are preserved; no application tests or builds were run. Validation is limited to `git diff --check` and review of the documentation diff.
@@ -437,22 +450,38 @@ Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, check
 - Distinguished planned macOS/Windows/Linux/Android/iOS support from recorded macOS ARM64 foundation and scoped Windows x64/Linux x64 installed-runtime evidence. Android/iOS native compatibility and minimum OS versions remain unverified/open; no general platform support is declared. Existing B5/B6 partial verification and Stage 2 status are unchanged.
 - Documentation-only validation: reviewed the README/state diff against existing platform decisions and B6 evidence; `git diff --check` passed. Application tests and builds were not rerun. Only README.md and docs/STATE.md were updated and synchronized.
 
+### Approved MVP delivery plan (2026-10-25)
+
+**APPROVED:** Target MVP delivery on **November 2, 2026**, with **macOS ARM64** as the primary development platform. Prioritize a usable personal study workflow before implementing the updater. The in-app updater remains a **mandatory MVP release requirement**; optional automatic checks do not make updater delivery optional.
+
+**PLANNED implementation sequence — targets, not guarantees of completion:**
+
+1. **Data safety:** Prepare the real study schema, forward-only migrations, production/development isolation, backup compatibility, and preservation tests.
+2. **Core usability (Stage C):** Implement configurable study areas, manual sessions with date, duration, optional times, topic and notes, basic history, editing, daily totals, and the approved 10-minute effective-study streak calculation.
+3. **Personal deployment:** Establish a stable, installable macOS build for real daily use, isolated from experimental builds and destructive tests. Personal use may begin before the MVP only once study persistence, migrations, and backup compatibility are sufficiently validated under the data protection policy.
+4. **Updater (Stage U):** Implement and validate the approved official Tauri updater architecture, optional automatic checks, manual checks, cryptographic signatures, and GitHub Releases.
+5. **MVP acceptance:** Verify data preservation, migration safety, backup/recovery, offline operation, and actual A → B → C application updates before release; retain Stage U's complete release gate.
+
+Defer advanced features when necessary to protect the deadline and stability without changing approved product behavior or waiving acceptance requirements. This sequencing decision does not close Stage 2, resolve M2, or change B5/B6 evidence: Stage 2 remains **IN PROGRESS** and B5/B6 remain **PARTIALLY VERIFIED**.
+
+**Documentation-only update:** README.md and docs/STATE.md are synchronized with this approved roadmap and policy. Existing implementation and test evidence is preserved; no application builds or tests are required or rerun for this task. Documentation validation uses complete diff review and unstaged/staged whitespace checks.
+
 ### Stage U — macOS In-App Updates and Private Alpha Distribution
 
 **Decision date:** 2026-10-25  
-**Status:** APPROVED PRIORITY / PLANNED IMPLEMENTATION / NOT VERIFIED  
+**Status:** APPROVED MVP REQUIREMENT / PLANNED IMPLEMENTATION / NOT VERIFIED\
 **Primary platform:** macOS ARM64 (Apple Silicon)  
 **Target:** Initial private alpha distribution to a small group of users.
 
 #### U.1. Objective and delivery priority
 
-Implement and validate a reliable, optional, user-friendly in-app update mechanism before developing the Stage C study functionality.
+Implement and validate a reliable, user-friendly in-app update mechanism after data safety, core study usability, and stable personal deployment. Updater implementation is not a prerequisite for beginning Stage C.
 
-The first distributed alpha may contain only the existing persistence prototype and update interface. Study areas, sessions, history, streaks, statistics, and dashboard functionality will be delivered incrementally through subsequent updates.
+The approved November 2, 2026 MVP target includes this mandatory updater and its release acceptance gate. Personal use may begin earlier only under the validated data-safety conditions above; it does not establish MVP acceptance or private alpha updater readiness.
 
-Update delivery is the primary release gate. Study functionality must not consume the current implementation budget until the updater is validated or an explicit scope change is approved.
+**Superseded planning history:** The earlier October 25 updater-first plan allowed a persistence-only alpha and deferred Stage C until updater acceptance. The approved MVP delivery plan now replaces that priority and dependency, without changing the architecture, security policy, or release gate below.
 
-This priority change does not close Stage 2, waive M2, or modify its existing acceptance requirements. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
+Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED. M2 and existing acceptance requirements remain unchanged.
 
 #### U.2. Approved product behavior
 
@@ -522,7 +551,7 @@ The public GitHub Releases endpoint should expose only approved application upda
 
 The updater must not directly modify or reset SQLite study data.
 
-Existing transactional migrations and B4 backup/restore safeguards must remain authoritative.
+Preserve existing transactional migration and B4 backup/restore safeguards, subject to the mandatory personal-use data protection policy above. Extend B4 schema validation and compatibility before relying on backups for the new study schema.
 
 Before distributing releases containing schema changes:
 
@@ -533,17 +562,19 @@ Before distributing releases containing schema changes:
 5. Test backup export, supported historical backup restoration, and startup recovery.
 6. Reject incompatible databases safely without silently resetting or replacing them.
 
-Update verification must include the existing production storage path and application identifier.
+Update verification must confirm that release configuration preserves the existing production storage path and application identifier; exercise upgrade scenarios with representative disposable data in isolated acceptance identities, never personal study data.
 
 Network or download failures must leave the current installed version usable. Interrupted installation and startup failures require separate native acceptance tests; automatic rollback must not be assumed.
 
 Document a recovery procedure for reinstalling a compatible application version without deleting native user data. Database downgrades must not be assumed safe.
 
-#### U.6. Implementation milestones and Codex budget
+#### U.6. Planned implementation milestones and dependencies
 
-**Available planning budget:** 22% of the current Codex allowance on 2026-10-25 and 100% on 2026-10-26. These percentages are planning allocations, not guaranteed implementation time or completion.
+**Dependency:** Schedule U1–U4 after the data-safety, core-usability, and personal-deployment priorities above, before MVP acceptance. These milestones are PLANNED, not implemented or verified.
 
-**U1 — Updater foundation (22%, October 25)**
+**Historical planning allocation (superseded):** The updater-first plan allocated 22% of the October 25 Codex allowance and 100% on October 26 (U1: 22%; U2: 30%; U3: 25%; U4: 45%). Those allocations were estimates, not completion evidence or the current schedule.
+
+**U1 — Updater foundation**
 
 - Inspect the current repository, lockfiles, native startup sequence, existing tests, and supported updater plugin versions.
 - Integrate the official updater and required minimal permissions.
@@ -552,7 +583,7 @@ Document a recovery procedure for reinstalling a compatible application version 
 - Isolate updater operations from persistence and backup services.
 - Validate the foundation without changing study-domain behavior.
 
-**U2 — Release automation (30%, October 26)**
+**U2 — Release automation**
 
 - Implement a dedicated macOS ARM64 GitHub Actions release workflow.
 - Reuse existing frontend and Rust checks.
@@ -561,7 +592,7 @@ Document a recovery procedure for reinstalling a compatible application version 
 - Verify versions, signatures, target architecture, manifest content, and download URLs.
 - Use isolated update testing before publishing to the production update channel.
 
-**U3 — User experience (25%, October 26)**
+**U3 — User experience**
 
 - Implement automatic checks on startup.
 - Add a persistent setting to disable automatic checks.
@@ -570,7 +601,7 @@ Document a recovery procedure for reinstalling a compatible application version 
 - Prevent simultaneous installations and unsafe installation during critical data operations.
 - Handle offline operation and network failures without blocking normal use.
 
-**U4 — Native acceptance and recovery (45%, October 26)**
+**U4 — Native acceptance and recovery**
 
 - Test real installed-application updates A → B → C.
 - Verify persistence after each update and restart.
@@ -631,7 +662,7 @@ Every future release must:
 - Preserve the updater trust configuration and production application identity.
 - Use a compatible signing key and validated update manifest.
 - Increment the version correctly.
-- Pass relevant automated checks before publication.
+- Pass regression and migration checks using representative disposable data before every production release, alongside relevant automated checks.
 - Validate migrations and backup compatibility when changing stored data.
 - Preserve a documented recovery path.
 - Be published only after explicit release approval.
@@ -650,7 +681,7 @@ Synchronize `README.md` and `docs/STATE.md` after implementation tasks as requir
 
 **Stage C — First Functional Study Release**
 
-Stage C begins after the macOS updater acceptance gate is satisfied or its scope is explicitly revised.
+**PLANNED next milestone:** Prepare the real study schema, forward-only migrations, isolated environments, updated B4 schema/backup compatibility, and preservation tests before relying on study records for personal use. Then implement Stage C core usability; Stage U is no longer a prerequisite. No new study functionality is implemented or verified by this plan.
 
 The first functional workflow is:
 
@@ -660,7 +691,7 @@ A calendar day qualifies after at least 10 minutes of effective study, accumulat
 
 Timer recovery, multi-area allocations, calendar views, activity heatmaps, cumulative charts, advanced dashboards, and goals will be implemented incrementally in subsequent releases.
 
-The updater must remain operational and regression-tested throughout Stage C and later development.
+After core usability and stable personal deployment, implement Stage U and pass its release gate before the MVP. Once implemented, keep the updater operational and regression-tested throughout later development.
 
 ### Documentation synchronization policy (2026-10-24)
 

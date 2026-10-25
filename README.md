@@ -64,9 +64,23 @@ B5 adds isolated process-termination and filesystem-fault integration tests, plu
 
 No production-ready release or installation package is currently available.
 
+## Approved MVP Roadmap
+
+**APPROVED:** MVP target **November 2, 2026**; primary development platform **macOS ARM64**. **PLANNED** sequence: study-data safety (real schema, forward-only migrations, isolation, backup compatibility and preservation tests) → core usability (configurable areas, manual sessions with date/duration, optional times/topic/notes, history, editing, daily totals and the approved 10-minute streak) → stable personal deployment → updater → MVP acceptance. These are targets, not completion guarantees; advanced features may be deferred to protect stability and the deadline.
+
+Personal use may begin before the MVP once study persistence, migrations, and backup compatibility are sufficiently validated, using a stable installable macOS build isolated from experimental builds and destructive tests. Study workflows remain unimplemented. The updater is a **mandatory MVP release requirement**, with actual A → B → C updates, data preservation, migration safety, backup/recovery and offline operation verified before release. Stage 2 remains **IN PROGRESS**; B5/B6 remain **PARTIALLY VERIFIED**, with existing acceptance gaps unchanged.
+
+### Personal Data Protection
+
+**APPROVED:** Preserve `com.missioncontrol.desktop` and its existing native SQLite storage. Never delete, reset, overwrite, or repurpose the production database to fix development or migration problems. Development, automated tests, experimental builds, and destructive acceptance tests must use separate application identifiers and isolated databases; never run destructive acceptance scenarios against personal study data.
+
+Applied migrations must remain immutable; add forward-only migrations. Extend B4 schema validation and backup compatibility before relying on backups for the new study schema. Require compatible, verified backups outside application-managed storage before risky migrations or production upgrades. Updates must preserve records, identifiers, timestamps, and migration history; migration/startup failures must preserve data and report errors rather than silently reset storage. Every future production release must pass regression and migration checks with representative disposable data.
+
+No absolute immunity to data loss is claimed. Keep recovery procedures and documented limitations; see the [authoritative policy](docs/STATE.md#411-personal-use-data-protection-policy-approved-2026-10-25) and B4/B5/B6 evidence below.
+
 ## Planned In-App Updates
 
-The next implementation priority is optional in-app updating for the macOS ARM64 private alpha, before development of the main study features.
+Implement the updater after data safety, core study usability, and stable personal deployment, before MVP acceptance.
 
 The planned implementation uses the official Tauri 2 updater, signed update artifacts, GitHub Releases, and an approval-controlled GitHub Actions release workflow. Users will be able to check manually or disable automatic checks. Normal application functionality will remain available offline.
 
@@ -82,7 +96,7 @@ See [Project State](docs/STATE.md#stage-u--macos-in-app-updates-and-private-alph
 
 Windows/Linux CI checks and packaging are distinct from the installed native startup, persistence, UI Save/export and startup-restore coverage recorded below. UI restore selection/confirmation/cancel/invalid import, Windows disconnected-network operation, reboot and broader OS/filesystem coverage remain gaps for future desktop acceptance; general support is not declared.
 
-Mobile, public distribution, signing/notarization, signed installer/updater acceptance and advanced physical power-loss testing are deferred to explicit future milestones. Future support requires platform-specific native/offline persistence and recovery evidence; distribution requires clean installation and data-preserving signed updates; physical durability claims require controlled disposable-environment cuts and documented cache/flush guarantees. This deferral does not waive M2 or essential macOS data preservation. Physical-flush durability, hard-link/filesystem constraints, advisory-lock limits, retained recovery copies without pruning and unauthenticated plaintext backups remain residual risks.
+Mobile, public distribution, paid Apple signing/notarization and advanced physical power-loss testing remain future milestones. Signed updater acceptance is now mandatory for the MVP under Stage U; broader signed installer/distribution acceptance remains pending. Future support requires platform-specific native/offline persistence and recovery evidence; distribution requires clean installation and data-preserving signed updates; physical durability claims require controlled disposable-environment cuts and documented cache/flush guarantees. This deferral does not waive M2 or essential macOS data preservation. Physical-flush durability, hard-link/filesystem constraints, advisory-lock limits, retained recovery copies without pruning and unauthenticated plaintext backups remain residual risks.
 
 See the [authoritative scope and future acceptance conditions](docs/STATE.md#approved-stage-2-acceptance-scope-2026-10-25). This approved scope supersedes the historical B6 scope proposal without altering its evidence. This documentation-only change adds no test results; application tests and builds were not rerun.
 

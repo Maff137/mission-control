@@ -58,6 +58,16 @@ B5 adds isolated process-termination and filesystem-fault integration tests, plu
 
 No production-ready release or installation package is currently available.
 
+## Stage 2 acceptance scope
+
+**APPROVED (2026-10-25):** macOS ARM64 is the primary foundation acceptance platform. B5/B6 remain **PARTIALLY VERIFIED** and Stage 2 remains **IN PROGRESS**. M2 and all essential macOS data-integrity acceptance gaps must be resolved before closure, preserving offline native storage, migration/update safety, backup/restore, fault recovery and WebView independence. M2 remains NOT TESTED: resolve it through bounded, authorized isolated durability evidence or an explicit approved scope/risk decision; SIGKILL, reboot and fsync alone do not establish power-loss durability.
+
+Windows/Linux CI checks and packaging are distinct from the installed native startup, persistence, UI Save/export and startup-restore coverage recorded below. UI restore selection/confirmation/cancel/invalid import, Windows disconnected-network operation, reboot and broader OS/filesystem coverage remain gaps for future desktop acceptance; general support is not declared.
+
+Mobile, public distribution, signing/notarization, signed installer/updater acceptance and advanced physical power-loss testing are deferred to explicit future milestones. Future support requires platform-specific native/offline persistence and recovery evidence; distribution requires clean installation and data-preserving signed updates; physical durability claims require controlled disposable-environment cuts and documented cache/flush guarantees. This deferral does not waive M2 or essential macOS data preservation. Physical-flush durability, hard-link/filesystem constraints, advisory-lock limits, retained recovery copies without pruning and unauthenticated plaintext backups remain residual risks.
+
+See the [authoritative scope and future acceptance conditions](docs/STATE.md#approved-stage-2-acceptance-scope-2026-10-25). This approved scope supersedes the historical B6 scope proposal without altering its evidence. This documentation-only change adds no test results; application tests and builds were not rerun.
+
 ## B6 compatibility verification
 
 B6 is **PARTIALLY VERIFIED**; Stage 2 remains **IN PROGRESS**. Platform overlays remove the macOS-only packaging restriction without changing identity, CSP, migrations or native storage. The read-only GitHub Actions compatibility workflow uses `npm ci`, locked Cargo commands and unsigned Windows x64/Linux x64 packaging; it retains only synthetic runtime evidence artifacts and publishes no releases.

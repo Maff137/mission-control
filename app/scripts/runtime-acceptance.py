@@ -186,6 +186,11 @@ class Acceptance:
         # After submission the input remains focused; Save is disabled when empty.
         self.command(["xdotool", "key", "Tab", "Return"])
         time.sleep(3)
+        dialogs = self.command(["xdotool", "search", "--sync", "--onlyvisible", "--pid", str(self.child.pid)], timeout=15).splitlines()
+        dialogs = [candidate for candidate in dialogs if candidate != window]
+        require(len(dialogs) == 1, "Expected exactly one owned GTK Save dialog")
+        # Xvfb has no window manager to transfer focus to a new modal toplevel.
+        self.command(["xdotool", "windowfocus", "--sync", dialogs[0]])
         self.command(["import", "-window", "root", str(self.root / "linux-save-dialog.png")])
         # GTK Save's Name field accepts an absolute target; Ctrl+L instead
         # navigates Location and may interpret a new filename as a directory.

@@ -49,6 +49,13 @@ class RuntimeAcceptanceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "schema objects"):
             runtime.verify_schema(self.database)
 
+    def test_same_columns_without_required_constraint_are_rejected(self):
+        with closing(sqlite3.connect(self.database)) as db, db:
+            db.execute("DROP TABLE persistence_test_records")
+            db.execute("CREATE TABLE persistence_test_records (id TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), note TEXT NOT NULL DEFAULT '')")
+        with self.assertRaisesRegex(RuntimeError, "schema constraints"):
+            runtime.verify_schema(self.database)
+
     def test_prepare_blocked_and_refuse_reuse_or_unsafe_identity(self):
         target = self.root / "evidence"
         runtime.prepare(target)
@@ -58,10 +65,14 @@ class RuntimeAcceptanceTests(unittest.TestCase):
             runtime.prepare(target)
         with self.assertRaisesRegex(RuntimeError, "Unsafe identity"):
             runtime.storage_path("com.missioncontrol.desktop")
+        with self.assertRaisesRegex(RuntimeError, "Unsafe identity"):
+            runtime.storage_path("com.missioncontrol.acceptance.ci/../../desktop")
         existing = self.root / "existing"
         existing.mkdir()
         with patch.object(runtime, "storage_path", return_value=existing):
             acceptance = runtime.Acceptance(target)
+            acceptance.result("package installation", "PASS", "synthetic unit fixture")
+            self.assertEqual(json.loads((target / "results.json").read_text())["overall"], "BLOCKED")
             with patch.object(acceptance, "install") as install:
                 with self.assertRaisesRegex(RuntimeError, "existing native storage"):
                     acceptance.run()

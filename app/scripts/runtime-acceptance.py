@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import socket
 import sqlite3
@@ -32,7 +33,7 @@ def require(condition, message):
 
 
 def storage_path(identifier):
-    require(identifier.startswith("com.missioncontrol.acceptance.ci"), "Unsafe identity")
+    require(re.fullmatch(r"com\.missioncontrol\.acceptance\.ci[0-9a-f]{32}", identifier) is not None, "Unsafe identity")
     if sys.platform == "win32":
         return Path(os.environ["APPDATA"]) / identifier
     require(sys.platform == "linux", "Only Windows/Linux hosted VMs are supported")
@@ -79,13 +80,23 @@ class Acceptance:
         self.manifest = json.loads((self.root / "manifest.json").read_text())
         self.storage = storage_path(self.manifest["identifier"])
         self.database = self.storage / "mission-control.db"
-        self.rows = []
+        scenarios = ["package installation", "native initialization/schema", "process termination/relaunch",
+                     "packaged native startup restore", "UI restore confirmation/cancel/invalid import",
+                     "bundled runtime without Vite", "reboot/power-loss/distribution"]
+        scenarios += (["Linux bundled UI save", "Linux native UI export", "disconnected Linux runtime"]
+                      if sys.platform == "linux" else ["Windows desktop availability", "Windows bundled UI save", "Windows native UI export", "disconnected Windows runtime"])
+        self.rows = [{"scenario": name, "status": "BLOCKED", "detail": "Not reached; inspect prerequisite/runtime failures"} for name in scenarios]
         self.child = None
         self.counter = 0
         self.executable = None
 
     def result(self, name, status, detail):
-        self.rows.append({"scenario": name, "status": status, "detail": detail})
+        row = {"scenario": name, "status": status, "detail": detail}
+        found = next((index for index, item in enumerate(self.rows) if item["scenario"] == name), None)
+        if found is None:
+            self.rows.append(row)
+        else:
+            self.rows[found] = row
         self.publish()
         print(f"{status}: {name}: {detail}", flush=True)
 
@@ -117,7 +128,7 @@ class Acceptance:
         else:
             self.command(["sudo", "dpkg", "-i", str(package)])
             listing = self.command(["dpkg-deb", "-c", str(package)])
-            require("./usr/bin/mission-control" in listing, "Unexpected Debian executable")
+            require(any(line.split()[-1] in ["usr/bin/mission-control", "./usr/bin/mission-control"] for line in listing.splitlines() if line.split()), "Unexpected Debian executable")
             self.executable = Path("/usr/bin/mission-control")
         require(self.executable.is_file(), "Installed executable missing")
         self.result("package installation", "PASS", f"Installed {package.name}; SHA-256 in results.json; isolated identifier {self.manifest['identifier']}")
@@ -163,7 +174,7 @@ class Acceptance:
         verify_schema(self.database)
         return data
 
-    def linux_ui(self):
+    def linux_ui(self, original):
         self.start()
         window = self.command(["xdotool", "search", "--sync", "--onlyvisible", "--pid", str(self.child.pid), "--name", "Mission Control"], timeout=30).splitlines()[0]
         self.command(["xdotool", "windowfocus", "--sync", window])
@@ -181,17 +192,26 @@ class Acceptance:
         time.sleep(2)
         self.command(["xdotool", "key", "Return"])
         time.sleep(3)
+        return self.verify_ui(original, "Linux")
+
+    def windows_ui(self, original):
+        self.start()
+        self.command(["powershell", "-NoProfile", "-STA", "-File", str(HERE / "runtime-windows-ui.ps1"), "-AppProcessId", str(self.child.pid), "-EvidenceRoot", str(self.root)])
+        return self.verify_ui(original, "Windows")
+
+    def verify_ui(self, original, label):
         self.stop()
         actual = self.snapshot("ui-save")
         require(sum(row[1] == "CI UI save through bundled WebView" for row in actual["records"]) == 1, "UI Save did not commit exactly one record")
-        self.result("Linux bundled UI save", "PASS", "Xvfb/xdotool keyboard submission committed exactly one row; screenshot retained")
+        require(len(actual["records"]) == len(original["records"]) + 1 and all(record in actual["records"] for record in original["records"]) and actual["migrations"] == original["migrations"], "UI Save changed original records/history")
+        self.result(f"{label} bundled UI save", "PASS", "Native keyboard submission committed exactly one row and preserved original records/history; screenshot retained")
         exported = self.root / "ui-export.mcbackup"
         require(exported.is_file(), "Native UI export did not produce a backup")
         require(b5.snapshot(exported) == actual, "UI export records/history differ")
         with closing(sqlite3.connect(exported)) as db:
             require(db.execute("PRAGMA application_id").fetchone() == (1296253520,), "Export format identity missing")
             require(db.execute("PRAGMA user_version").fetchone() == (1,), "Export format version missing")
-        self.result("Linux native UI export", "PASS", "Native Save dialog produced format-1 snapshot with exact records/full history; integrity/FK passed")
+        self.result(f"{label} native UI export", "PASS", "Native Save dialog produced format-1 snapshot with exact records/full history; integrity/FK passed")
         return actual, exported
 
     def run(self):
@@ -208,15 +228,26 @@ class Acceptance:
         self.stop()
         require(self.snapshot("reopened") == baseline, "Exact fixture changed after relaunch")
         self.result("process termination/relaunch", "PASS", "Two synthetic SQLite fixture records preserved exactly, including IDs/Unicode/quotes/notes/timestamps and all migration fields; not UI inserts")
-        if sys.platform == "linux":
-            baseline, selected = self.linux_ui()
-        else:
-            # Probe actual runner desktop rather than asserting all hosted runners use Session 0.
+        label = "Linux" if sys.platform == "linux" else "Windows"
+        if sys.platform == "win32":
+            # Probe actual runner desktop rather than assuming hosted Session 0.
             desktop = self.command(["powershell", "-NoProfile", "-Command", "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class DesktopProbe { [DllImport(\"user32.dll\")] public static extern IntPtr OpenInputDesktop(uint f, bool i, uint a); [DllImport(\"user32.dll\")] public static extern bool CloseDesktop(IntPtr h); }'; $h=[DesktopProbe]::OpenInputDesktop(0,$false,1); Write-Output ([Environment]::UserInteractive); Write-Output ([System.Diagnostics.Process]::GetCurrentProcess().SessionId); Write-Output ($h -ne [IntPtr]::Zero); if ($h -ne [IntPtr]::Zero) { [void][DesktopProbe]::CloseDesktop($h) }"])
-            self.result("Windows UI/dialog acceptance", "BLOCKED", f"Desktop probe UserInteractive/session/input-desktop: {desktop.replace(chr(10), ', ')}. No reliable Windows WebView/dialog driver configured; process/SQLite success does not verify rendering or UI actions")
+            self.result("Windows desktop availability", "PASS", f"UserInteractive/session/input-desktop: {desktop.replace(chr(10), ', ')}; diagnostic only, not UI acceptance")
+        try:
+            baseline, selected = self.linux_ui(baseline) if sys.platform == "linux" else self.windows_ui(baseline)
+        except Exception as error:
+            self.stop()
+            saved = any(row["scenario"] == f"{label} bundled UI save" and row["status"] == "PASS" for row in self.rows)
+            # A Windows input-desktop/foreground limitation is an explicit blocker.
+            logs = "".join(path.read_text(encoding="utf-8") for path in self.root.glob("command-*.log"))
+            blocked = sys.platform == "win32" and "BLOCKED:" in logs
+            self.result(f"{label} native UI export" if saved else f"{label} bundled UI save", "BLOCKED" if blocked else "FAIL", str(error) + "; inspect driver logs/screenshot")
+            # Still exercise independent packaged restore; never hide UI failures.
+            current = self.snapshot("after-ui-failure")
+            require(all(record in current["records"] for record in baseline["records"]) and current["migrations"] == baseline["migrations"], "UI attempt changed baseline records/history")
+            baseline = current
             selected = self.root / "fixture.mcbackup"
             make_backup(self.database, selected)
-            self.result("Windows application UI export", "BLOCKED", "Restore input is a Python SQLite fixture, not an app-generated export; native service export is covered separately by existing Rust tests")
         # Distinct live data proves replacement instead of a vacuous unchanged comparison.
         with closing(sqlite3.connect(self.database)) as db, db:
             db.execute("INSERT INTO persistence_test_records(id,value,note) VALUES(?,?,?)", (str(uuid.uuid4()), "live-only row must be retained in original", "pre-restore"))
@@ -228,12 +259,14 @@ class Acceptance:
         self.start()
         self.stop()
         require(self.snapshot("after-restore") == baseline, "Native startup did not restore exact selected records/history")
-        require(b5.snapshot(work / "original.db") == original, "Retained original differs")
+        retained = b5.snapshot(work / "original.db")
+        (self.root / "retained-original.json").write_text(json.dumps(retained, indent=2, ensure_ascii=False), encoding="utf-8")
+        require(retained == original, "Retained original differs")
         require(not (self.storage / "restore.pending").exists(), "Pending marker not acknowledged")
         self.start()
         self.stop()
         require(self.snapshot("restore-reopened") == baseline, "Restored records/history changed on second reopen")
-        self.result("packaged native startup restore", "PASS", "Controller-constructed confirmation fixture; actual app restored exact backup, retained distinct original, cleared pending marker; second reopen/integrity/FK passed. UI selection/confirmation NOT tested")
+        self.result("packaged native startup restore", "PASS", f"Input {selected.name}; controller-constructed confirmation fixture; actual app restored exact backup, retained distinct original, cleared pending marker; second reopen/integrity/FK passed. UI selection/confirmation NOT tested")
         self.result("UI restore confirmation/cancel/invalid import", "BLOCKED", "Manual VM procedure required; startup fixture acceptance is not native dialog/confirmation acceptance")
         self.result("bundled runtime without Vite", "PASS", "Installed embedded release assets; port 1420 absent on every launch; no Vite/Node/server started. Network isolation is reported separately")
         if sys.platform == "linux":
@@ -252,7 +285,7 @@ def prepare(root):
     (root / "manifest.json").write_text(json.dumps(manifest, indent=2))
     (root / "config.json").write_text(json.dumps({"identifier": identifier, "productName": "Mission Control CI Acceptance"}))
     # Evidence survives failed prerequisites; never infer acceptance from build success.
-    (root / "results.json").write_text(json.dumps({**manifest, "results": [{"scenario": "packaged runtime", "status": "BLOCKED", "detail": "Build/install/runtime has not completed"}]}, indent=2))
+    (root / "results.json").write_text(json.dumps({"overall": "BLOCKED", **manifest, "results": [{"scenario": "packaged runtime", "status": "BLOCKED", "detail": "Build/install/runtime has not completed"}]}, indent=2))
     (root / "summary.md").write_text("Packaged native runtime: **BLOCKED** until build/install/controller completes.\n")
 
 
@@ -267,6 +300,8 @@ def main():
     acceptance = Acceptance(args.root)
     try:
         acceptance.run()
+        if any(row["status"] == "FAIL" for row in acceptance.rows):
+            raise SystemExit(1)
     except Exception as error:
         acceptance.result("runtime controller", "FAIL", str(error))
         raise

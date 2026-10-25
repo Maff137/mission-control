@@ -28,3 +28,19 @@ test("isolates development identity and exposes no generic SQL or filesystem per
   assert.deepEqual(read("../src-tauri/capabilities/default.json").permissions, []);
   assert.match(read("../package.json").scripts["desktop:dev"], /--config src-tauri\/tauri.dev.conf.json/);
 });
+
+test("desktop packaging selects native formats without changing identity or security", () => {
+  const read = (name: string) => JSON.parse(readFileSync(new URL(`../src-tauri/${name}`, import.meta.url), "utf8"));
+  const base = read("tauri.conf.json");
+  assert.deepEqual(base.bundle.targets, ["app"]);
+  for (const platform of ["windows", "linux"]) {
+    const overlay = read(`tauri.${platform}.conf.json`);
+    assert.deepEqual(Object.keys(overlay), ["bundle"]);
+    assert.deepEqual(overlay.bundle.targets, [platform === "windows" ? "nsis" : "deb"]);
+    if (platform === "windows") {
+      assert.equal(overlay.bundle.windows.webviewInstallMode.type, "offlineInstaller");
+    }
+  }
+  const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
+  assert.equal(scripts["desktop:build"], "tauri build");
+});

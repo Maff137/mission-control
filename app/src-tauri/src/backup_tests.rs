@@ -439,3 +439,33 @@ fn live_sources_and_internal_storage_cannot_be_imported() {
 
 #[path = "resilience_tests.rs"]
 mod resilience_tests;
+
+#[test]
+fn b6_unicode_paths_and_no_clobber_publication_preserve_exact_data() {
+    tauri::async_runtime::block_on(async {
+        let f = Fixture::new();
+        let mut store = f.store("unicode space 日本語");
+        database(&store, true).await;
+        let original = contents(&store.database()).await;
+        let backup = f.export("backup space Ω");
+        store.export(Some(&backup)).await.unwrap();
+        assert_eq!(contents(&backup).await, original);
+        let published = fs::read(&backup).unwrap();
+        assert_eq!(
+            store.export(Some(&backup)).await.unwrap_err().code,
+            "destination_exists"
+        );
+        assert_eq!(fs::read(&backup).unwrap(), published);
+        assert_eq!(contents(&store.database()).await, original);
+        store.stage(Some(&backup)).await.unwrap();
+        store.confirm().await.unwrap();
+        let directory = store.dir.clone();
+        drop(store);
+        for _ in 0..2 {
+            let mut reopened = Store::acquire(directory.clone()).unwrap();
+            reopened.startup().await.unwrap();
+            reopened.finish_startup().unwrap();
+            assert_eq!(contents(&reopened.database()).await, original);
+        }
+    });
+}

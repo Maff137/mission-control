@@ -12,7 +12,7 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm test",
     "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "desktop:build": "tauri build --bundles app",
+    "desktop:build": "tauri build",
     "rust:check": "cargo check --manifest-path src-tauri/Cargo.toml --locked",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --locked"
   },

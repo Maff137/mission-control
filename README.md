@@ -105,7 +105,7 @@ npm run desktop:build -- -- --locked  # Production macOS .app bundle
 npm run tauri -- build --debug --config src-tauri/tauri.dev.conf.json --bundles app -- --locked
 ```
 
-`npm run dev` and `npm run preview` are frontend-only helpers. `npm run tauri -- <command>` exposes the native CLI. The desktop build command currently targets the validated macOS `.app` format; other platform packaging remains unverified. Lockfiles are committed for reproducible dependency resolution.
+`npm run dev` and `npm run preview` are frontend-only helpers. `npm run tauri -- <command>` exposes the native CLI. The desktop build command uses the base macOS `.app` target and automatic Windows NSIS / Linux Debian configuration overlays. Windows embeds the WebView2 offline installer; these unsigned packages require native acceptance before support is declared. Lockfiles are committed for reproducible dependency resolution.
 
 The macOS bundle is generated at `app/src-tauri/target/release/bundle/macos/Mission Control.app`. Open it through Finder, or copy it to Applications for local use. This is a local development bundle, not a signed/notarized distribution release. Template icons remain placeholders.
 
@@ -206,3 +206,7 @@ The project state document is the authoritative reference for the current develo
 ---
 
 **Mission Control — Track your time. Build consistency. Understand your progress.**
+
+## B6 compatibility verification
+
+B6 is **PARTIALLY VERIFIED**; Stage 2 remains **IN PROGRESS**. Platform overlays remove the macOS-only packaging restriction without changing identity, CSP, migrations or native storage. The read-only GitHub Actions compatibility workflow uses `npm ci`, locked Cargo commands and unsigned Windows x64/Linux x64 packaging; it uploads no artifacts and publishes no releases. Workflow definition alone is not execution evidence. Native mobile testing requires missing SDKs; reboot and real power loss remain untested. See [B6 compatibility report](docs/B6-COMPATIBILITY-REPORT.md) for current evidence and acceptance procedures.

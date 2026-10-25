@@ -1,6 +1,6 @@
 # Mission Control — Project State
 
-**Last updated:** 2026-10-24\
+**Last updated:** 2026-10-25\
 **Phase:** B5 automated resilience scope and isolated native checks passed on macOS ARM64; B5 remains partially verified and Stage 2 remains open.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
@@ -229,7 +229,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 3. **PARTIALLY VERIFIED:** Both bundles preserved records across closure/reopening; the user independently confirmed save/close/reopen persistence. Full device restart remains untested.
 4. **COMPLETED (B3, macOS ARM64):** Versioned migrations preserve records; rollback/recovery, repeated initialization and incompatibility rejection passed automated tests. A native two-build B2-to-B3 upgrade preserved existing records and new writes through quit/reopen using isolated storage.
 5. **COMPLETED (B4, macOS ARM64):** Consistent backup export, validated restart restoration, invalid-backup rejection and retained recovery data passed automated and isolated native validation.
-6. **PARTIALLY VERIFIED (B5, macOS ARM64):** Integration/resilience tests and isolated native upgrade/process/startup checks passed. Reboot, power loss, native UI fault handling, interior packaged restore timing and other environmental acceptance checks remain pending; see B5 below.
+6. **PARTIALLY VERIFIED (B5, macOS ARM64):** Integration/resilience tests and isolated native upgrade/process/startup checks passed. Native filesystem and SQLite write-failure handling (M3), eight packaged restore interruption boundaries (M4), and startup-error presentation and WebView storage independence (M6) passed within the documented scope. Full device reboot (M1) awaits independent user verification; real power loss (M2) and cross-platform/filesystem/distribution compatibility (M5) remain pending. Interruptions inside individual filesystem operations and midway through SQL plugin initialization remain unverified; see B5 below.
 7. **PENDING:** Perform initial cross-platform compatibility checks, including early mobile feasibility testing.
 8. **ONGOING:** Record actual test results, known limitations, and remaining platform-specific requirements; B2 results are recorded below.
 
@@ -362,7 +362,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 - After the final source review, all requested checks were rerun successfully (13 Vitest, 16 Rust, frontend/native checks, formatting, all-target Clippy and locked desktop packaging). The isolated debug bundle was rebuilt into the test directory's `final/` subdirectory and launched again. Native export to `b4-final.mcbackup`, validated restore selection and confirmation cancellation passed; the final export exactly matched the earlier restored records/history. The test app was quit again.
 - `lsof -c mission-control -Fn` showed only the dedicated test bundle and its isolated native database/WAL/SHM/lock paths; production/development applications were not launched and their databases were never opened. Native-file inspection copied bytes into temporary snapshots only after full quit/no WAL; queries opened those snapshots read-only. This demonstrates app restart durability and isolated native backup/restore, not full device reboot, OS power loss or signed distribution.
 
-**Limitations and remaining validation:** Full device reboot/power-loss durability, non-macOS/mobile platforms, unsupported destination filesystems, permission/disk-full faults in the native UI, startup-failure presentation, signing/distribution and WebView-data clearing remain unverified. Directory fsync is implemented on Unix only; Windows directory crash durability remains unverified. The advisory process lock coordinates B4 instances, not old versions/external SQLite tools. Recovery snapshots and raw originals are retained without pruning or a recovery-management UI. Backups are unauthenticated plaintext; accept only trusted files and protect exports. Stage 2 and the broader architectural gate remain open.
+**Limitations and remaining validation at the B4 milestone (native UI faults, startup presentation and WebView clearing superseded by B5 below):** Full device reboot/power-loss durability, non-macOS/mobile platforms, unsupported destination filesystems, permission/disk-full faults in the native UI, startup-failure presentation, signing/distribution and WebView-data clearing remain unverified. Directory fsync is implemented on Unix only; Windows directory crash durability remains unverified. The advisory process lock coordinates B4 instances, not old versions/external SQLite tools. Recovery snapshots and raw originals are retained without pruning or a recovery-management UI. Backups are unauthenticated plaintext; accept only trusted files and protect exports. Stage 2 and the broader architectural gate remain open.
 
 ### Stage B5 — Integration and resilience testing
 

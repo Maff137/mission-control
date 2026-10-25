@@ -105,6 +105,8 @@ Closed snapshot inspection used Python's standard library. Confirm process exit 
 
 ## Remaining acceptance at the initial B5 pass (historical)
 
+The statuses in this table record the initial B5 pass. The [native acceptance follow-up](#native-acceptance-follow-up--m3-m4-and-m6) supersedes M3, M4 and M6 with passing results within its documented scope. M1, M2 and M5 remain pending; interruptions inside individual filesystem operations and midway through SQL plugin initialization remain unverified. B5 remains **PARTIALLY VERIFIED** and Stage 2 remains **IN PROGRESS**.
+
 | ID | Procedure required | Expected | Actual / status and limit |
 |---|---|---|---|
 | M1 device restart | Save synthetic records using a fresh isolated bundle, quit, independently arrange a full device restart, reopen and compare complete records/history/integrity | Data persists through OS restart | **NOT TESTED**; user machine was not restarted |

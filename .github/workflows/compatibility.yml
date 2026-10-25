@@ -2,7 +2,7 @@ name: Desktop compatibility
 
 on:
   push:
-    branches: [main, test/b6-platform-compatibility]
+    branches: [main, test/b6-platform-compatibility, test/native-runtime-acceptance]
   pull_request:
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
       matrix:
         os: [windows-2022, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: app
@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev xvfb xdotool imagemagick dbus-x11
       - name: Install Rust toolchain
         run: |
           rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
@@ -47,12 +47,48 @@ jobs:
           rustc -Vv
           cargo --version
       - run: npm ci
+      - name: Test acceptance controller safeguards
+        run: python -B -m unittest discover -s scripts/tests -v
       - run: npm run check
       - run: npm run build
       - run: npm run rust:check
       - run: npm run rust:test
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
-      - name: Package unsigned application (no native launch)
-        run: npm run desktop:build -- -- --locked
-      # No release, upload, signing credentials, user data or executable launch.
+      - name: Prepare disposable acceptance identity and initial BLOCKED evidence
+        shell: bash
+        run: python scripts/runtime-acceptance.py prepare "$RUNNER_TEMP/mc-runtime"
+      - name: Package unsigned isolated release application
+        shell: bash
+        run: npm run desktop:build -- --config "$RUNNER_TEMP/mc-runtime/config.json" -- --locked
+      - name: Install and exercise Linux packaged runtime
+        if: runner.os == 'Linux'
+        shell: bash
+        run: dbus-run-session -- xvfb-run -a -s "-screen 0 1280x1024x24" bash scripts/runtime-linux.sh "$RUNNER_TEMP/mc-runtime"
+      - name: Install and exercise Windows packaged runtime
+        if: runner.os == 'Windows'
+        shell: bash
+        run: python scripts/runtime-acceptance.py run "$RUNNER_TEMP/mc-runtime"
+      - name: Publish acceptance summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/mc-runtime/summary.md" ]; then
+            cat "$RUNNER_TEMP/mc-runtime/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Packaged runtime: BLOCKED by prerequisite/check failure; inspect job logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain synthetic acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-runtime-${{ matrix.os }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/mc-runtime/*.json
+            ${{ runner.temp }}/mc-runtime/*.md
+            ${{ runner.temp }}/mc-runtime/*.log
+            ${{ runner.temp }}/mc-runtime/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      # Only synthetic reports/screenshots/logs are uploaded; no packages or databases.
+      # No release, signing, host reboot, power-loss or production/development data access.

@@ -203,6 +203,12 @@ The macOS controller requires Python 3, verifies the bundle identifier and actua
 
 **B5 remains partially verified.** SIGKILL does not establish power-loss durability. M1 device reboot is **PASS on macOS ARM64** (2026-10-25); local pre/post dumps, integrity files and boot timestamps corroborate the user-reported acceptance script result. Power loss (M2) and remaining native cross-platform/filesystem and signed distribution requirements (M5) remain pending. Interruption inside an individual kernel operation or midway through SQL plugin initialization was not tested. Stage 2 stays open. See the [B5 report](docs/B5-RESILIENCE-REPORT.md) for exact commands, per-scenario results, reproducible native procedures and limitations.
 
+### Hosted native runtime acceptance
+
+The existing [B6 compatibility workflow](.github/workflows/compatibility.yml) now builds one isolated unsigned release package per Windows x64/Linux x64 job, installs it, and runs `app/scripts/runtime-acceptance.py`. The controller uses fresh disposable application identities, verifies actual native SQLite startup, exact schema/migration history, process termination/relaunch and packaged startup restore with retained originals. Controller-created records/restore markers are fixture tests, not UI actions. Linux also attempts bundled WebView Save/native-dialog export under Xvfb; Windows reports desktop availability separately and leaves UI/dialog acceptance BLOCKED without a reliable driver.
+
+Per-scenario PASS/FAIL/BLOCKED summaries and 14-day synthetic evidence artifacts distinguish installed runtime, UI and existing Rust service tests; packages/databases are not uploaded. No Vite server starts; Linux runtime uses an isolated network namespace. Windows disconnected-network, UI restore confirmation, clean installation prerequisites, reboot/power loss, mobile and signed distribution remain outside automated acceptance. Run controller safeguards with `python3 -B -m unittest discover -s app/scripts/tests -v` from the repository root. See the [B6 follow-up and disposable VM procedure](docs/B6-COMPATIBILITY-REPORT.md#hosted-packaged-runtime-acceptance-follow-up). Local checks passed (14 Vitest, 25 Rust, three controller tests, frontend/native checks, rustfmt, Clippy and release macOS packaging); hosted execution results are pending; B5/B6 remain PARTIALLY VERIFIED and Stage 2 IN PROGRESS.
+
 ## Documentation
 
 For current decisions, approved requirements, development priorities, and unresolved technical questions, refer to:

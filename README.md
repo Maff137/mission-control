@@ -64,6 +64,18 @@ B5 adds isolated process-termination and filesystem-fault integration tests, plu
 
 No production-ready release or installation package is currently available.
 
+## Planned In-App Updates
+
+The next implementation priority is optional in-app updating for the macOS ARM64 private alpha, before development of the main study features.
+
+The planned implementation uses the official Tauri 2 updater, signed update artifacts, GitHub Releases, and an approval-controlled GitHub Actions release workflow. Users will be able to check manually or disable automatic checks. Normal application functionality will remain available offline.
+
+Initial distribution will use ad-hoc macOS signing without paid Apple Developer membership or notarization. Users may need to authorize the initial installation, and subsequent Gatekeeper behavior must be verified on real installed applications.
+
+**Current status:** Planned, not implemented or tested. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
+
+See [Project State](docs/STATE.md#stage-u--macos-in-app-updates-and-private-alpha-distribution) for the implementation plan, acceptance criteria, security requirements, and release priorities.
+
 ## Stage 2 acceptance scope
 
 **APPROVED (2026-10-25):** macOS ARM64 is the primary foundation acceptance platform. B5/B6 remain **PARTIALLY VERIFIED** and Stage 2 remains **IN PROGRESS**. M2 and all essential macOS data-integrity acceptance gaps must be resolved before closure, preserving offline native storage, migration/update safety, backup/restore, fault recovery and WebView independence. M2 remains NOT TESTED: resolve it through bounded, authorized isolated durability evidence or an explicit approved scope/risk decision; SIGKILL, reboot and fsync alone do not establish power-loss durability.

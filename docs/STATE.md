@@ -2,6 +2,7 @@
 
 **Last updated:** 2026-10-25\
 **Phase:** B6 compatibility verification; B5/B6 remain PARTIALLY VERIFIED and Stage 2 remains IN PROGRESS.
+**Immediate delivery priority (2026-10-25):** Implement and validate optional in-app updates for macOS ARM64 before starting Stage C study features. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
 **Repository:** `Maff137/mission-control`  
 **Historical reference:** `definicoes-mission-control.md` (October 20, 2026 compilation).
 
@@ -201,7 +202,7 @@ The old **Backend365 / Mode 42** curriculum was an independent learning plan, **
 9. Compatibility of the selected Tauri SQL plugin on platforms beyond macOS.
 10. Minimum supported OS versions, release order, installers and signing/distribution.
 11. Future backup schema compatibility, recovery-retention UI and optional encryption beyond the B4 prototype.
-12. Priorities for the first functional release after the persistence prototype passes.
+12. Detailed scope and release schedule for study features after the macOS updater acceptance gate. Updater-first delivery is APPROVED; the study workflow remains deferred, not cancelled.
 
 ## 7. Immediate next steps
 
@@ -438,11 +439,230 @@ Remote CI passed on Linux x64 (14 Vitest, 25 Rust with one ignored helper, check
 
 ### Next development milestone
 
-After Stage 2 passes its acceptance criteria, implement the first tested functional workflow:
+### Stage U — macOS In-App Updates and Private Alpha Distribution
 
-**Create a study area → record a study session → persist the record → display history → calculate study totals and streaks.**
+**Decision date:** 2026-10-25  
+**Status:** APPROVED PRIORITY / PLANNED IMPLEMENTATION / NOT VERIFIED  
+**Primary platform:** macOS ARM64 (Apple Silicon)  
+**Target:** Initial private alpha distribution to a small group of users.
 
-Subsequent features, including timer recovery, multi-area allocations, calendar views, heatmaps, and dashboards, should be implemented incrementally according to approved requirements.
+#### U.1. Objective and delivery priority
+
+Implement and validate a reliable, optional, user-friendly in-app update mechanism before developing the Stage C study functionality.
+
+The first distributed alpha may contain only the existing persistence prototype and update interface. Study areas, sessions, history, streaks, statistics, and dashboard functionality will be delivered incrementally through subsequent updates.
+
+Update delivery is the primary release gate. Study functionality must not consume the current implementation budget until the updater is validated or an explicit scope change is approved.
+
+This priority change does not close Stage 2, waive M2, or modify its existing acceptance requirements. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
+
+#### U.2. Approved product behavior
+
+- **APPROVED:** The application must check for updates automatically when launched, provided the user has not disabled automatic checks.
+- **APPROVED:** Users must be able to disable automatic update checks through a persistent setting.
+- **APPROVED:** Provide a manual "Check for Updates" action.
+- **APPROVED:** Notify users when a newer version is available and request confirmation before installation.
+- **APPROVED:** Installation must not require users to open GitHub, execute terminal commands, or manually reinstall the application.
+- **APPROVED:** Normal application functionality must remain available offline.
+- **APPROVED:** Network failures, unavailable releases, and invalid update metadata must produce recoverable errors rather than block application startup.
+- **APPROVED:** Application updates must preserve native SQLite data, migration history, backup compatibility, and the existing production application identifier.
+- **APPROVED:** Prevent concurrent update installations and avoid replacing the application during critical database, backup, or restore operations.
+- **APPROVED:** The initial private macOS alpha will not require a paid Apple Developer Program membership or Apple notarization.
+
+**Acceptance limitation:** Avoiding additional macOS Gatekeeper authorization prompts is a desired user experience, not a guaranteed property of unsigned or non-notarized distribution. It must be tested on actual installed macOS applications.
+
+#### U.3. Recommended technical architecture
+
+Use the official Tauri 2 updater plugin rather than implementing a custom downloader or executable replacement mechanism.
+
+Recommended components:
+
+- Official Tauri updater plugin for version checks, download, signature verification, and installation.
+- GitHub Releases as the distribution endpoint, using the official supported static update manifest format.
+- GitHub Actions and `tauri-apps/tauri-action` for reproducible macOS ARM64 release builds.
+- Cryptographically signed updater artifacts, using the public key embedded in the application.
+- Ad-hoc macOS code signing for the initial private alpha.
+- A small, isolated update service responsible for update state and operations.
+- A separate React component for update notifications, progress, user confirmation, and error messages.
+- Persistent native application settings for the automatic-check preference; browser-managed storage must not be authoritative.
+
+Avoid custom update servers, mandatory cloud accounts, unnecessary frameworks, independent download managers, and application-specific installer logic.
+
+Keep the updater independent of study-domain models, session calculations, and database schema details.
+
+**Suggested module locations (not mandatory):**
+
+- `app/src/services/updater.ts`
+- `app/src/components/UpdateDialog.tsx`
+- `app/src-tauri/tauri.conf.json`
+- `app/src-tauri/src/lib.rs`
+- `.github/workflows/release.yml`
+- `docs/UPDATE-PROCESS.md`
+
+Final module boundaries and plugin permissions must be validated against the installed Tauri version and current application architecture.
+
+#### U.4. Signing, versioning, and security
+
+- Preserve the production bundle identifier `com.missioncontrol.desktop`.
+- Use monotonically increasing semantic versions.
+- Keep release versions consistent across relevant application manifests and package metadata.
+- Keep the updater signing private key outside the repository.
+- Store CI signing credentials only in appropriately protected GitHub Actions secrets.
+- Maintain a separate, securely protected recovery copy of the updater signing private key.
+- Never commit private keys, passwords, signing credentials, or generated secrets.
+- Verify signatures before installing downloaded update artifacts.
+- Reject invalid, missing, or incompatible update signatures.
+- Preserve signing-key continuity across releases. Key loss or incompatible rotation may prevent existing installations from updating.
+- Limit release automation permissions and review external GitHub Actions dependencies.
+- Do not publish releases automatically on ordinary commits or pushes to `main`.
+- Require passing validation and explicit approval before making an update available to users.
+- Keep experimental release testing isolated from the production update channel.
+
+The public GitHub Releases endpoint should expose only approved application updates. Draft and prerelease behavior must be accounted for when selecting the production update endpoint.
+
+#### U.5. Data integrity and recovery requirements
+
+The updater must not directly modify or reset SQLite study data.
+
+Existing transactional migrations and B4 backup/restore safeguards must remain authoritative.
+
+Before distributing releases containing schema changes:
+
+1. Add new forward-only migrations without modifying previously applied migrations.
+2. Test upgrades from the previous distributed application version.
+3. Verify exact preservation of existing records, identifiers, timestamps, and migration history.
+4. Update the B4 backup schema validation and compatibility policy when migrations change the database schema.
+5. Test backup export, supported historical backup restoration, and startup recovery.
+6. Reject incompatible databases safely without silently resetting or replacing them.
+
+Update verification must include the existing production storage path and application identifier.
+
+Network or download failures must leave the current installed version usable. Interrupted installation and startup failures require separate native acceptance tests; automatic rollback must not be assumed.
+
+Document a recovery procedure for reinstalling a compatible application version without deleting native user data. Database downgrades must not be assumed safe.
+
+#### U.6. Implementation milestones and Codex budget
+
+**Available planning budget:** 22% of the current Codex allowance on 2026-10-25 and 100% on 2026-10-26. These percentages are planning allocations, not guaranteed implementation time or completion.
+
+**U1 — Updater foundation (22%, October 25)**
+
+- Inspect the current repository, lockfiles, native startup sequence, existing tests, and supported updater plugin versions.
+- Integrate the official updater and required minimal permissions.
+- Configure updater signing and macOS ad-hoc application signing.
+- Prepare native updater artifacts and the public-key configuration.
+- Isolate updater operations from persistence and backup services.
+- Validate the foundation without changing study-domain behavior.
+
+**U2 — Release automation (30%, October 26)**
+
+- Implement a dedicated macOS ARM64 GitHub Actions release workflow.
+- Reuse existing frontend and Rust checks.
+- Build reproducible signed updater artifacts and update metadata.
+- Keep release publication under explicit approval.
+- Verify versions, signatures, target architecture, manifest content, and download URLs.
+- Use isolated update testing before publishing to the production update channel.
+
+**U3 — User experience (25%, October 26)**
+
+- Implement automatic checks on startup.
+- Add a persistent setting to disable automatic checks.
+- Implement manual update checks.
+- Display update availability, download progress, installation confirmation, success, and actionable errors.
+- Prevent simultaneous installations and unsafe installation during critical data operations.
+- Handle offline operation and network failures without blocking normal use.
+
+**U4 — Native acceptance and recovery (45%, October 26)**
+
+- Test real installed-application updates A → B → C.
+- Verify persistence after each update and restart.
+- Test invalid signatures, missing releases, failed downloads, and unavailable connectivity.
+- Verify persistent update preferences.
+- Validate compatibility with backup, restore, and startup recovery.
+- Test macOS security behavior using actual application bundles installed in Applications.
+- Review the complete diff, run applicable checks, and document actual evidence.
+- Provide a tested recovery procedure and identify any remaining distribution blockers.
+
+The implementation may require reallocating effort when dependencies or acceptance tests reveal blockers. Do not skip security or persistence validation to meet the target date.
+
+#### U.7. Release acceptance gate
+
+**Status: NOT TESTED.**
+
+The updater is considered ready for private alpha distribution only after the following acceptance criteria pass:
+
+1. Version A is manually installed and successfully launched on macOS ARM64.
+2. Version A discovers, downloads, verifies, and installs Version B.
+3. Version B discovers, downloads, verifies, and installs Version C.
+4. Both updates preserve complete native SQLite records and migration history.
+5. The application reopens and remains functional after each update.
+6. Invalid or incompatible update signatures are rejected.
+7. Offline operation and unavailable release endpoints do not block application startup.
+8. Disabled automatic checks remain disabled after restarting the application.
+9. Backup export, supported restoration, and database integrity checks remain functional.
+10. Update installation does not interrupt critical data operations.
+11. The actual Gatekeeper behavior is documented and the intended nontechnical-user update flow is verified on the target macOS installation.
+12. A recovery procedure is documented and tested using isolated, disposable application data.
+
+Use disposable acceptance identities and storage for destructive or upgrade tests. Never run acceptance tests against normal development or production user databases.
+
+A successful build or unit test alone does not establish native updater acceptance.
+
+If any essential requirement fails or remains unverified, keep Stage U IN PROGRESS and do not describe the update flow as guaranteed or ready for general distribution.
+
+#### U.8. Distribution limitations and future compatibility
+
+The initial distribution is limited to private macOS ARM64 testing.
+
+Paid Apple Developer membership and Apple notarization are intentionally excluded from this private alpha. Ad-hoc signing does not guarantee that macOS will suppress Gatekeeper warnings during installation or later updates.
+
+The initial application may be installed manually by the project owner, including user-authorized macOS security approval.
+
+No permanent exemption from future macOS security checks is assumed.
+
+Windows, Linux, Android, iOS, public distribution, paid Apple signing, notarization, and broader OS compatibility remain future milestones.
+
+Future distribution requirements must be revisited before claiming unrestricted installation or automatic-update compatibility across supported devices.
+
+#### U.9. Maintenance policy
+
+Keep the update implementation minimal, modular, and independent from the study feature roadmap.
+
+Every future release must:
+
+- Preserve the updater trust configuration and production application identity.
+- Use a compatible signing key and validated update manifest.
+- Increment the version correctly.
+- Pass relevant automated checks before publication.
+- Validate migrations and backup compatibility when changing stored data.
+- Preserve a documented recovery path.
+- Be published only after explicit release approval.
+
+Maintain `docs/UPDATE-PROCESS.md` as the operational reference for signing-key recovery, release creation, acceptance checks, troubleshooting, and emergency maintenance.
+
+Synchronize `README.md` and `docs/STATE.md` after implementation tasks as required by `AGENTS.md`.
+
+**Official references:**
+
+- https://v2.tauri.app/plugin/updater/
+- https://v2.tauri.app/distribute/pipelines/github/
+- https://v2.tauri.app/distribute/sign/macos/
+
+### Next development milestone
+
+**Stage C — First Functional Study Release**
+
+Stage C begins after the macOS updater acceptance gate is satisfied or its scope is explicitly revised.
+
+The first functional workflow is:
+
+**Create a study area → record a study session → persist the record → display history → calculate daily study totals and streaks.**
+
+A calendar day qualifies after at least 10 minutes of effective study, accumulated across eligible sessions and study areas.
+
+Timer recovery, multi-area allocations, calendar views, activity heatmaps, cumulative charts, advanced dashboards, and goals will be implemented incrementally in subsequent releases.
+
+The updater must remain operational and regression-tested throughout Stage C and later development.
 
 ### Documentation synchronization policy (2026-10-24)
 

@@ -186,12 +186,14 @@ class Acceptance:
         # After submission the input remains focused; Save is disabled when empty.
         self.command(["xdotool", "key", "Tab", "Return"])
         time.sleep(3)
-        self.command(["xdotool", "key", "ctrl+l"])
+        self.command(["import", "-window", "root", str(self.root / "linux-save-dialog.png")])
+        # GTK Save's Name field accepts an absolute target; Ctrl+L instead
+        # navigates Location and may interpret a new filename as a directory.
+        self.command(["xdotool", "key", "alt+n", "ctrl+a"])
         self.command(["xdotool", "type", "--clearmodifiers", str(self.root / "ui-export.mcbackup")])
         self.command(["xdotool", "key", "Return"])
-        time.sleep(2)
-        self.command(["xdotool", "key", "Return"])
         time.sleep(3)
+        self.command(["import", "-window", "root", str(self.root / "linux-after-export.png")])
         return self.verify_ui(original, "Linux")
 
     def windows_ui(self, original):

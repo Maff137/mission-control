@@ -526,9 +526,11 @@ fn study_records_survive_backup_export_restore_and_reopen() {
         let mut store = f.store("study-records");
         database(&store, false).await;
         let mut db = open(&store.database(), false, false).await.unwrap();
-        db.execute("INSERT INTO study_areas (id, name, color) VALUES ('area', 'Mathematics', '#7FA9CC')")
-            .await
-            .unwrap();
+        db.execute(
+            "INSERT INTO study_areas (id, name, color) VALUES ('area', 'Mathematics', '#7FA9CC')",
+        )
+        .await
+        .unwrap();
         db.execute("INSERT INTO study_sessions (id, area_id, duration_minutes, study_date, notes) VALUES ('session', 'area', 45, '2026-11-12', 'Synthetic history note')")
             .await
             .unwrap();

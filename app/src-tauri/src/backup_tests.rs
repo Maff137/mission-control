@@ -477,8 +477,11 @@ fn previous_format_one_backup_can_restore_and_upgrade_to_study_schema() {
         let old = f.store("legacy");
         let mut legacy = SqliteConnection::connect_with(
             &sqlx::sqlite::SqliteConnectOptions::new()
-                .filename(old.database()).create_if_missing(true)
-        ).await.unwrap();
+                .filename(old.database())
+                .create_if_missing(true),
+        )
+        .await
+        .unwrap();
         legacy_migrator().run(&mut legacy).await.unwrap();
         legacy.execute("INSERT INTO persistence_test_records (id, value, note) VALUES ('old', 'retained value', 'old note')").await.unwrap();
         legacy.close().await.unwrap();
@@ -497,13 +500,63 @@ fn previous_format_one_backup_can_restore_and_upgrade_to_study_schema() {
         current.startup().await.unwrap();
         let mut upgraded = open(&current.database(), false, false).await.unwrap();
         migrator().run(&mut upgraded).await.unwrap();
-        let rows: Vec<(String, String, String)> = sqlx::query_as(
-            "SELECT id, value, note FROM persistence_test_records ORDER BY id"
-        ).fetch_all(&mut upgraded).await.unwrap();
-        assert_eq!(rows, vec![("old".into(), "retained value".into(), "old note".into())]);
-        let count: (i64,) = sqlx::query_as("SELECT count(*) FROM study_areas").fetch_one(&mut upgraded).await.unwrap();
+        let rows: Vec<(String, String, String)> =
+            sqlx::query_as("SELECT id, value, note FROM persistence_test_records ORDER BY id")
+                .fetch_all(&mut upgraded)
+                .await
+                .unwrap();
+        assert_eq!(
+            rows,
+            vec![("old".into(), "retained value".into(), "old note".into())]
+        );
+        let count: (i64,) = sqlx::query_as("SELECT count(*) FROM study_areas")
+            .fetch_one(&mut upgraded)
+            .await
+            .unwrap();
         assert_eq!(count.0, 0);
         upgraded.close().await.unwrap();
         current.finish_startup().unwrap();
+    });
+}
+
+#[test]
+fn study_records_survive_backup_export_restore_and_reopen() {
+    tauri::async_runtime::block_on(async {
+        let f = Fixture::new();
+        let mut store = f.store("study-records");
+        database(&store, false).await;
+        let mut db = open(&store.database(), false, false).await.unwrap();
+        db.execute("INSERT INTO study_areas (id, name, color) VALUES ('area', 'Mathematics', '#7FA9CC')")
+            .await
+            .unwrap();
+        db.execute("INSERT INTO study_sessions (id, area_id, duration_minutes, study_date, notes) VALUES ('session', 'area', 45, '2026-11-12', 'Synthetic history note')")
+            .await
+            .unwrap();
+        let query = "SELECT s.id, a.id, a.name, a.color, s.duration_minutes, s.study_date, s.notes, s.created_at
+            FROM study_sessions s JOIN study_areas a ON a.id = s.area_id";
+        let original: (String, String, String, String, i64, String, String, String) =
+            sqlx::query_as(query).fetch_one(&mut db).await.unwrap();
+        db.close().await.unwrap();
+
+        let backup = f.export("study-records");
+        assert!(store.export(Some(&backup)).await.unwrap());
+        let mut db = open(&store.database(), false, false).await.unwrap();
+        db.execute("DELETE FROM study_sessions").await.unwrap();
+        db.execute("DELETE FROM study_areas").await.unwrap();
+        db.close().await.unwrap();
+
+        assert!(store.stage(Some(&backup)).await.unwrap());
+        store.confirm().await.unwrap();
+        let directory = store.dir.clone();
+        drop(store);
+
+        let mut reopened = Store::acquire(directory).unwrap();
+        reopened.startup().await.unwrap();
+        reopened.finish_startup().unwrap();
+        let mut db = open(&reopened.database(), false, false).await.unwrap();
+        let recovered: (String, String, String, String, i64, String, String, String) =
+            sqlx::query_as(query).fetch_one(&mut db).await.unwrap();
+        assert_eq!(recovered, original);
+        db.close().await.unwrap();
     });
 }

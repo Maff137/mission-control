@@ -25,8 +25,13 @@ pub struct StudySession {
 
 pub(crate) fn valid_study_date(value: &str) -> bool {
     let bytes = value.as_bytes();
-    if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-'
-        || !bytes.iter().enumerate().all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
+    if bytes.len() != 10
+        || bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || !bytes
+            .iter()
+            .enumerate()
+            .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
     {
         return false;
     }
@@ -60,15 +65,27 @@ pub async fn list_study_areas(
     store.ready()?;
     let instances = app.state::<tauri_plugin_sql::DbInstances>();
     let pools = instances.0.read().await;
-    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db") else {
-        return Err(fail("database_unavailable", "Restart the application; keep all database files."));
+    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db")
+    else {
+        return Err(fail(
+            "database_unavailable",
+            "Restart the application; keep all database files.",
+        ));
     };
     let rows: Vec<(String, String, String, String)> = sqlx::query_as(
-        "SELECT id, name, color, created_at FROM study_areas ORDER BY created_at ASC, id ASC"
-    ).fetch_all(pool).await?;
-    Ok(rows.into_iter().map(|(id, name, color, created_at)| StudyArea {
-        id, name, color, created_at
-    }).collect())
+        "SELECT id, name, color, created_at FROM study_areas ORDER BY created_at ASC, id ASC",
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(id, name, color, created_at)| StudyArea {
+            id,
+            name,
+            color,
+            created_at,
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -80,21 +97,35 @@ pub async fn create_study_area(
     color: String,
 ) -> Result<()> {
     let name = name.trim();
-    if !valid_id(&id) || name.is_empty() || name.chars().count() > 80
-        || color.len() != 7 || !color.starts_with('#')
+    if !valid_id(&id)
+        || name.is_empty()
+        || name.chars().count() > 80
+        || color.len() != 7
+        || !color.starts_with('#')
         || !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
     {
-        return Err(fail("invalid_study_area", "Enter a valid name (1–80 characters), color (#RRGGBB), and area ID."));
+        return Err(fail(
+            "invalid_study_area",
+            "Enter a valid name (1–80 characters), color (#RRGGBB), and area ID.",
+        ));
     }
     let store = state.lock().await;
     store.ready()?;
     let instances = app.state::<tauri_plugin_sql::DbInstances>();
     let pools = instances.0.read().await;
-    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db") else {
-        return Err(fail("database_unavailable", "Restart the application; keep all database files."));
+    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db")
+    else {
+        return Err(fail(
+            "database_unavailable",
+            "Restart the application; keep all database files.",
+        ));
     };
     sqlx::query("INSERT INTO study_areas (id, name, color) VALUES (?, ?, ?)")
-        .bind(id).bind(name).bind(color).execute(pool).await?;
+        .bind(id)
+        .bind(name)
+        .bind(color)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -107,17 +138,42 @@ pub async fn list_study_sessions(
     store.ready()?;
     let instances = app.state::<tauri_plugin_sql::DbInstances>();
     let pools = instances.0.read().await;
-    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db") else {
-        return Err(fail("database_unavailable", "Restart the application; keep all database files."));
+    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db")
+    else {
+        return Err(fail(
+            "database_unavailable",
+            "Restart the application; keep all database files.",
+        ));
     };
     let rows: Vec<(String, String, String, String, i64, String, String, String)> = sqlx::query_as(
         "SELECT s.id, s.area_id, a.name, a.color, s.duration_minutes, s.study_date, s.notes, s.created_at
          FROM study_sessions s JOIN study_areas a ON a.id = s.area_id
          ORDER BY s.study_date DESC, s.created_at DESC, s.id DESC"
     ).fetch_all(pool).await?;
-    Ok(rows.into_iter().map(|(id, area_id, area_name, area_color, duration_minutes, study_date, notes, created_at)| StudySession {
-        id, area_id, area_name, area_color, duration_minutes, study_date, notes, created_at
-    }).collect())
+    Ok(rows
+        .into_iter()
+        .map(
+            |(
+                id,
+                area_id,
+                area_name,
+                area_color,
+                duration_minutes,
+                study_date,
+                notes,
+                created_at,
+            )| StudySession {
+                id,
+                area_id,
+                area_name,
+                area_color,
+                duration_minutes,
+                study_date,
+                notes,
+                created_at,
+            },
+        )
+        .collect())
 }
 
 #[tauri::command]
@@ -130,20 +186,32 @@ pub async fn create_study_session(
     study_date: String,
     notes: String,
 ) -> Result<()> {
-    if !valid_id(&id) || !valid_id(&area_id) || duration_minutes <= 0
-        || !valid_study_date(&study_date) || notes.chars().count() > 10000
+    if !valid_id(&id)
+        || !valid_id(&area_id)
+        || duration_minutes <= 0
+        || !valid_study_date(&study_date)
+        || notes.chars().count() > 10000
     {
-        return Err(fail("invalid_study_session", "Enter a valid area, positive duration, calendar date, and notes of up to 10,000 characters."));
+        return Err(fail(
+            "invalid_study_session",
+            "Enter a valid area, positive duration, calendar date, and notes of up to 10,000 characters.",
+        ));
     }
     let store = state.lock().await;
     store.ready()?;
     let instances = app.state::<tauri_plugin_sql::DbInstances>();
     let pools = instances.0.read().await;
-    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db") else {
-        return Err(fail("database_unavailable", "Restart the application; keep all database files."));
+    let Some(tauri_plugin_sql::DbPool::Sqlite(pool)) = pools.get("sqlite:mission-control.db")
+    else {
+        return Err(fail(
+            "database_unavailable",
+            "Restart the application; keep all database files.",
+        ));
     };
     let exists: (i64,) = sqlx::query_as("SELECT count(*) FROM study_areas WHERE id = ?")
-        .bind(&area_id).fetch_one(pool).await?;
+        .bind(&area_id)
+        .fetch_one(pool)
+        .await?;
     if exists.0 != 1 {
         return Err(fail("unknown_study_area", "Choose an existing study area."));
     }
@@ -160,7 +228,18 @@ mod tests {
         for date in ["2026-11-12", "2024-02-29", "2000-02-29", "0001-01-01"] {
             assert!(super::valid_study_date(date), "{date}");
         }
-        for date in ["2026-02-29", "1900-02-29", "2026-04-31", "0000-01-01", "2026-13-01", "2026-00-10", "2026-11-00", "2026-1-2", "2026-11-12T00:00:00Z", "٢٠٢٦-١١-١٢"] {
+        for date in [
+            "2026-02-29",
+            "1900-02-29",
+            "2026-04-31",
+            "0000-01-01",
+            "2026-13-01",
+            "2026-00-10",
+            "2026-11-00",
+            "2026-1-2",
+            "2026-11-12T00:00:00Z",
+            "٢٠٢٦-١١-١٢",
+        ] {
             assert!(!super::valid_study_date(date), "{date}");
         }
     }

@@ -193,17 +193,21 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
         ));
     }
     let history: Vec<(i64, String, bool, Vec<u8>)> = sqlx::query_as("SELECT version, description, success, checksum FROM _sqlx_migrations ORDER BY version LIMIT 100").fetch_all(&mut db).await?;
-    let expected_history: Vec<_> = if is_current { migrator() } else { legacy_migrator() }
-        .iter()
-        .map(|m| {
-            (
-                m.version,
-                m.description.to_string(),
-                true,
-                m.checksum.to_vec(),
-            )
-        })
-        .collect();
+    let expected_history: Vec<_> = if is_current {
+        migrator()
+    } else {
+        legacy_migrator()
+    }
+    .iter()
+    .map(|m| {
+        (
+            m.version,
+            m.description.to_string(),
+            true,
+            m.checksum.to_vec(),
+        )
+    })
+    .collect();
     if history != expected_history {
         return Err(fail(
             "incompatible_migrations",
@@ -231,12 +235,23 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
                        + length(CAST(notes AS BLOB)) + length(CAST(created_at AS BLOB)) > 1000000)"
         ).fetch_one(&mut db).await?;
         if invalid_study.0 != 0 {
-            return Err(fail("invalid_study_records", "Backup study records have invalid types or exceed supported size limits."));
+            return Err(fail(
+                "invalid_study_records",
+                "Backup study records have invalid types or exceed supported size limits.",
+            ));
         }
-        let dates: Vec<(String,)> = sqlx::query_as("SELECT DISTINCT study_date FROM study_sessions LIMIT 100000")
-            .fetch_all(&mut db).await?;
-        if dates.iter().any(|(date,)| !crate::study::valid_study_date(date)) {
-            return Err(fail("invalid_study_date", "Backup contains an invalid calendar date."));
+        let dates: Vec<(String,)> =
+            sqlx::query_as("SELECT DISTINCT study_date FROM study_sessions LIMIT 100000")
+                .fetch_all(&mut db)
+                .await?;
+        if dates
+            .iter()
+            .any(|(date,)| !crate::study::valid_study_date(date))
+        {
+            return Err(fail(
+                "invalid_study_date",
+                "Backup contains an invalid calendar date.",
+            ));
         }
     }
     let integrity: Vec<(String,)> = sqlx::query_as("PRAGMA integrity_check(1)")

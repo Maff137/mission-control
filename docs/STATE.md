@@ -57,6 +57,13 @@
 - **Offline scope:** Native startup and existing SQLite records were checked with process-scoped `sandbox-exec` outbound-network denial, then outbound-IP denial on the final bundle. No Vite server or host network changes were used. UI automation could not attach to these directly launched restricted processes; therefore network-denied UI saves and complete disconnected UI interaction remain unverified. Normal bundled UI startup/restart and synthetic writes passed separately.
 - **Launch/review:** The requested `npm run desktop:experiment` successfully started Vite and the native process after the initial sandbox denied its listening socket (`EPERM`). Its experimental database path was verified through open file handles. The automation could not identify that unbundled process, so UI acceptance used the experimental debug `.app` instead. The final unsigned bundle is left open at `/private/tmp/mission-control-manual-validation/app/src-tauri/target/debug/bundle/macos/Mission Control Experiment.app` for human visual/functional review. This is not an installed signed release; editing, timers, streaks and heatmaps remain outside this experiment.
 
+#### Human experimental acceptance (2026-11-12)
+
+- **VISUAL DESIGN APPROVED:** The product owner reviewed the native macOS experimental window and explicitly approved its current appearance for the vocational experiment. Preserve the accepted layout unless a future change is separately approved.
+- **HANDS-ON FUNCTIONAL REPORT:** The product owner also reported that everything worked during their Mac review. Record this as user-reported acceptance of the tested experimental workflow. It does not independently establish every possible boundary condition or replace the automated evidence above.
+- **FINAL CI VERIFIED:** [Desktop compatibility run 43315714017](https://github.com/Maff137/mission-control/actions/runs/43315714017) completed successfully on Windows and Linux for `ba69120d9300ff4b2936a2e90d28a5aafd7ab7d7`. This supplements the native macOS test evidence; some broader Stage 2 acceptance gaps remain open.
+- **SCOPE:** The manual study experiment may be treated as accepted within its defined scope. It remains branch-only, uses disposable experimental data, and is neither an approved production release nor a completion of the broader MVP. Full UI interaction under enforced offline conditions and general release/update acceptance have not been established.
+
 ## 2. Preserved functional requirements
 
 ### 2.1 Study streak

@@ -44,3 +44,12 @@ test("desktop packaging selects native formats without changing identity or secu
   const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
   assert.equal(scripts["desktop:build"], "tauri build");
 });
+
+test("experimental development uses an isolated application identity", () => {
+  const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
+  const experiment = read("../src-tauri/tauri.experiment.conf.json");
+  assert.equal(experiment.identifier, "com.missioncontrol.desktop.experiment20261112");
+  assert.notEqual(experiment.identifier, read("../src-tauri/tauri.conf.json").identifier);
+  assert.notEqual(experiment.identifier, read("../src-tauri/tauri.dev.conf.json").identifier);
+  assert.match(read("../package.json").scripts["desktop:experiment"], /tauri\.experiment\.conf\.json/);
+});

@@ -178,6 +178,9 @@ class Acceptance:
         self.start()
         window = self.command(["xdotool", "search", "--sync", "--onlyvisible", "--pid", str(self.child.pid), "--name", "Mission Control"], timeout=30).splitlines()[0]
         self.command(["xdotool", "windowfocus", "--sync", window])
+        # Open the temporary diagnostics view so the existing storage acceptance stays intact.
+        self.command(["xdotool", "key", "--clearmodifiers", "Tab", "Return"])
+        time.sleep(0.3)
         self.command(["xdotool", "key", "--clearmodifiers", "Tab"])
         self.command(["xdotool", "type", "--clearmodifiers", "--delay", "40", "CI UI save through bundled WebView"])
         self.command(["xdotool", "key", "Return"])

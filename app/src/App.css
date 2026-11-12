@@ -50,3 +50,56 @@ ul { padding: 0; list-style: none; }
 li { border-top: 1px solid #444; padding: 12px 0; overflow-wrap: anywhere; }
 time { display: block; color: #c5c6ca; font-size: .8rem; margin-top: 4px; }
 [role="alert"] p { color: #ffb4ab; }
+
+/* Stage C experimental study workflow */
+.workspace { box-sizing: border-box; width: 100%; max-width: 1200px; margin: 0 auto; padding: clamp(20px, 4vw, 44px); }
+.workspace-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.workspace-header h1 { margin: 0 0 8px; font-size: clamp(2rem, 4vw, 2.8rem); }
+.workspace-header .eyebrow { margin: 0 0 8px; }
+.subtitle { margin: 0; }
+.secondary-button { background: #303238; color: #f5f5f5; border: 1px solid #6c6e75; }
+.secondary-button:hover:not(:disabled) { background: #3b3d43; }
+.diagnostics-toggle { font-size: .82rem; white-space: nowrap; }
+.study-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.study-layout section, .backup-panel section { max-width: none; margin-top: 0; }
+.panel { background: #212329; border: 1px solid #42454e; border-radius: 16px; padding: clamp(16px, 2vw, 26px); min-width: 0; }
+.panel-kicker { margin: 0 0 10px; font-size: .72rem; letter-spacing: .13em; color: #f4d35e; font-weight: 700; }
+.panel h2 { font-size: 1.35rem; margin: 0 0 5px; }
+.panel-intro { font-size: .88rem; margin: 0 0 23px; }
+.form-stack, .quick-area { display: flex; flex-direction: column; gap: 18px; }
+.field label { font-size: .88rem; font-weight: 600; }
+.field input, .field select, .field textarea { box-sizing: border-box; width: 100%; min-width: 0; background: #181a20; color: #f5f5f5; border: 1px solid #747982; border-radius: 8px; padding: 11px 12px; font: inherit; color-scheme: dark; }
+.field textarea { resize: vertical; line-height: 1.5; }
+.field select:focus-visible, .field textarea:focus-visible { outline: 2px solid #f4d35e; outline-offset: 2px; }
+.form-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.area-picker { display: flex; gap: 8px; }
+.area-picker select { flex: 1; min-width: 0; }
+.add-area-button { padding: 10px 12px; white-space: nowrap; }
+.muted { color: #aeb0b8; font-weight: 400; }
+.quick-area { border-top: 1px solid #444750; margin-top: 18px; padding-top: 18px; }
+.quick-area .muted, .field-warning { margin: 0; font-size: .84rem; }
+.field-warning { color: #f4d35e; }
+.success-message { color: #a9dbc3; font-size: .9rem; }
+.error-message { margin-top: 12px; }
+.history-panel { min-height: 250px; }
+.empty-state { border: 1px dashed #5a5d66; padding: 18px; border-radius: 10px; font-size: .9rem; }
+.session-cards { display: flex; flex-direction: column; gap: 12px; }
+.session-card { display: flex; background: #282b32; border: 1px solid #484b55; border-radius: 12px; overflow: hidden; }
+.area-stripe { width: 5px; flex-shrink: 0; }
+.session-details { padding: 14px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.session-topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.session-topline h3 { margin: 0; font-size: 1rem; }
+.session-topline strong { white-space: nowrap; color: #f4d35e; }
+.session-card time { margin-top: 6px; }
+.session-notes { font-size: .88rem; white-space: pre-wrap; margin: 10px 0 0; }
+.backup-panel { margin-top: 24px; }
+.backup-panel section { max-width: none; }
+.legacy-checks { padding: 12px 0 24px; }
+.legacy-checks section { max-width: 640px; }
+@media (max-width: 720px) {
+  .study-layout { grid-template-columns: 1fr; }
+  .workspace-header { flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  .form-pair { grid-template-columns: 1fr; }
+}

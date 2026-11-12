@@ -68,7 +68,9 @@ No production-ready release or installation package is currently available.
 
 The `feature/manual-study-sessions` branch adds a forward-only study migration (version 3), native commands for study-area and manual-session creation/listing, and format-1 backup validation for both the current and previous B3 schemas. Study areas have independently identified names/colors; manual sessions store an area reference, integer minutes, a local calendar date, optional free-form notes and creation timestamp. Existing prototype records are retained separately.
 
-**Status:** Backend implementation under validation, not merged or released. The user-facing study form, quick area creation, history cards, native app reopen acceptance and an installable personal release remain pending. All experiments must use disposable application identities and synthetic records, not `com.missioncontrol.desktop` storage.
+**Status:** Backend and inline React study form implemented on the feature branch, with quick area creation, automatic area colors, optional notes and history cards. Integration and end-to-end native macOS acceptance are still pending; no installable personal release is approved. Legacy storage diagnostics remain accessible through a separate Diagnostics toggle for existing regression acceptance.
+
+**Safe experiment (macOS):** From `app/`, use `npm run desktop:experiment` to run with the dedicated `com.missioncontrol.desktop.experiment20261112` identifier and isolated storage. Do not launch this experimental branch with a production identity. Use synthetic data only; after a native test, fully quit and reopen the experimental app to verify persistence. Production data under `com.missioncontrol.desktop` must remain untouched.
 
 ## Approved MVP Roadmap
 
@@ -130,7 +132,7 @@ The structure will evolve as implementation progresses.
 
 ## Getting Started
 
-The native welcome screen includes temporary SQLite persistence and B4 backup/restore controls. Study features are not implemented.
+The experimental feature branch adds inline manual study entry and history to the native screen; the legacy persistence diagnostics and B4 backup/restore controls remain available. These are not yet a released or macOS-accepted study workflow.
 
 ### Prerequisites
 

@@ -39,6 +39,9 @@ if ($app.MainWindowHandle -eq [IntPtr]::Zero -or $app.MainWindowTitle -ne 'Missi
 [void][AcceptanceWindow]::SetForegroundWindow($app.MainWindowHandle)
 Start-Sleep -Seconds 2
 Assert-OwnedForeground
+# Open the temporary diagnostics view before exercising the original persistence UI.
+Send-Keys '{TAB}'
+Send-Keys '{ENTER}'
 Send-Keys '{TAB}'
 Paste-Literal 'CI UI save through bundled WebView'
 Send-Keys '{ENTER}'

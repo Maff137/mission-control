@@ -14,7 +14,8 @@
     "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "desktop:build": "tauri build",
     "rust:check": "cargo check --manifest-path src-tauri/Cargo.toml --locked",
-    "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --locked"
+    "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --locked",
+    "desktop:experiment": "tauri dev --config src-tauri/tauri.experiment.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

@@ -1,6 +1,6 @@
 # Mission Control — Project State
 
-**Last updated:** 2026-10-25\
+**Last updated:** 2026-11-12\
 **Phase:** B6 compatibility verification; B5/B6 remain PARTIALLY VERIFIED and Stage 2 remains IN PROGRESS.
 **Immediate delivery priority (2026-10-25):** Prepare study-data safety, then deliver a usable personal study workflow and stable macOS ARM64 installation before implementing the mandatory MVP updater. MVP target: November 2, 2026; targets are not completion guarantees. Stage 2 remains IN PROGRESS; B5/B6 remain PARTIALLY VERIFIED.
 **Repository:** `Maff137/mission-control`  
@@ -34,6 +34,14 @@
 - **VERIFIED (2026-10-24):** Stage B2 adds native SQLite test-record persistence, transactional initialization, isolated dev storage, and packaged-app quit/reopen verification in both environments. See B2 results below; the wider foundation gate is still open.
 - **HISTORICAL B1 VALIDATION (2026-10-24):** Stage B1 initializes the official Tauri 2 React/TypeScript/Vite template in `app/`, reduced to a static welcome screen and minimal Rust entry point. macOS ARM64 frontend checks, native checks, and `.app` packaging passed. The packaged window was visually inspected with the development server stopped. At the B1 milestone, no persistence or study features were implemented; B2 adds persistence as described below.
 - **OBSERVED (2026-10-20):** The new GitHub repository had an empty `README.md` and no `STATE.md` on `main` before this document was drafted. No working features were verified in the new repository.
+
+### 1.1 Experimental manual study persistence (2026-11-12; feature branch)
+
+**APPROVED for the vocational experiment:** Inline manual study entry with a quick-create study area, an automatically assigned area color, required area/date/positive duration, optional free-form notes, and history cards. The first experimental release does not include session editing, the timer, streak calculation, or the heatmap. AC-01 through AC-11 were approved in conversation; product implementation remains incremental.
+
+**IMPLEMENTED ON `feature/manual-study-sessions`, not merged or released:** Migration 3 creates independent `study_areas` and `study_sessions` tables without editing prior migrations or repurposing `persistence_test_records`. Native Rust commands provide create/list operations with input checks, referential integrity and session history ordering. The B4 schema/backup validator now permits strictly validated current and preceding B3 format-1 backups, with ordinary SQLx forward migration after legacy restoration. Additional migration and restoration regression tests are present. CI branch coverage uses the existing compatibility workflow.
+
+**VALIDATION STATUS:** A preliminary in-memory SQLite test checked preservation of one legacy row, study inserts, constraints, foreign keys and integrity. Automated Rust, full native application and post-restart acceptance results are not yet established; do not claim Stage C usability is complete. The Stage 2 B5/B6 remaining acceptance gaps are unchanged. All real-app checks must use dedicated disposable identifiers, synthetic data and offline operation.
 
 ## 2. Preserved functional requirements
 

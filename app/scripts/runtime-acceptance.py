@@ -42,7 +42,7 @@ def storage_path(identifier):
 
 def verify_schema(database):
     with closing(sqlite3.connect(database)) as db, closing(sqlite3.connect(":memory:")) as expected:
-        # Reconstruct the exact SQLx schema plus the two immutable app migrations.
+        # Reconstruct the exact SQLx schema plus every forward-only app migration.
         expected.execute("CREATE TABLE _sqlx_migrations (version BIGINT PRIMARY KEY, description TEXT NOT NULL, installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, success BOOLEAN NOT NULL, checksum BLOB NOT NULL, execution_time BIGINT NOT NULL)")
         files = sorted((HERE.parent / "src-tauri/migrations").glob("*.sql"))
         for file in files:
@@ -50,7 +50,7 @@ def verify_schema(database):
         # SQLx whitespace is not significant; PRAGMA columns and schema object names are.
         objects = "SELECT type,name,tbl_name FROM sqlite_schema ORDER BY type,name"
         require(db.execute(objects).fetchall() == expected.execute(objects).fetchall(), "Unexpected schema objects")
-        for table in ["persistence_test_records", "_sqlx_migrations"]:
+        for table in ["persistence_test_records", "study_areas", "study_sessions", "_sqlx_migrations"]:
             require(db.execute(f"PRAGMA table_info({table})").fetchall() == expected.execute(f"PRAGMA table_info({table})").fetchall(), f"Wrong columns: {table}")
             sql = "SELECT sql FROM sqlite_schema WHERE type='table' AND name=?"
             normalize = lambda text: "".join(text.split()).lower()
@@ -151,7 +151,7 @@ class Acceptance:
                 try:
                     # Probe only the dedicated DB; no mutations while the application runs.
                     with closing(sqlite3.connect(f"{self.database.as_uri()}?mode=ro", uri=True, timeout=0.2)) as db:
-                        if db.execute("SELECT count(*) FROM _sqlx_migrations WHERE success=1").fetchone() == (2,) and not (self.storage / "restore.pending").exists():
+                        if db.execute("SELECT count(*) FROM _sqlx_migrations WHERE success=1").fetchone() == (3,) and not (self.storage / "restore.pending").exists():
                             time.sleep(2)
                             require(self.child.poll() is None, "App exited after SQL initialization")
                             return

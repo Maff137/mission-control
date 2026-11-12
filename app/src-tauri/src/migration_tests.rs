@@ -253,3 +253,68 @@ fn future_version_and_checksum_mismatch_fail_without_changes() {
         db.close().await.unwrap();
     });
 }
+
+#[test]
+fn study_tables_upgrade_without_changing_legacy_records_and_persist_after_reopen() {
+    tauri::async_runtime::block_on(async {
+        let file = TestDatabase::new();
+        let mut db = file.open().await;
+        migrator(2).run(&mut db).await.unwrap();
+        let originals = seed(&mut db).await;
+        let original_history = history(&mut db).await;
+        db.close().await.unwrap();
+
+        let mut db = file.open().await;
+        migrator(3).run(&mut db).await.unwrap();
+        assert_eq!(records(&mut db).await, originals);
+        assert_eq!(history(&mut db).await.len(), original_history.len() + 1);
+        db.execute("PRAGMA foreign_keys=ON").await.unwrap();
+        db.execute("INSERT INTO study_areas (id, name, color) VALUES ('a', 'Programming', '#E1B837')").await.unwrap();
+        db.execute("INSERT INTO study_sessions (id, area_id, duration_minutes, study_date, notes) VALUES ('s', 'a', 45, '2026-11-12', 'Reviewed Rust & SQLite')").await.unwrap();
+        assert!(db.execute("INSERT INTO study_sessions (id, area_id, duration_minutes, study_date) VALUES ('bad', 'a', 0, '2026-11-12')").await.is_err());
+        assert!(db.execute("INSERT INTO study_sessions (id, area_id, duration_minutes, study_date) VALUES ('orphan', 'missing', 30, '2026-11-12')").await.is_err());
+        assert!(db.execute("INSERT INTO study_areas (id, name, color) VALUES ('invalid', ' ', '#E1B837')").await.is_err());
+        let new_history = history(&mut db).await;
+        integrity(&mut db).await;
+        db.close().await.unwrap();
+
+        let mut db = file.open().await;
+        migrator(3).run(&mut db).await.unwrap();
+        assert_eq!(records(&mut db).await, originals);
+        assert_eq!(history(&mut db).await, new_history);
+        let saved: (i64, String, String) = sqlx::query_as("SELECT duration_minutes, study_date, notes FROM study_sessions WHERE id = 's'").fetch_one(&mut db).await.unwrap();
+        assert_eq!(saved, (45, "2026-11-12".into(), "Reviewed Rust & SQLite".into()));
+        integrity(&mut db).await;
+        db.close().await.unwrap();
+    });
+}
+
+#[test]
+fn failed_study_migration_does_not_modify_legacy_records_or_schema() {
+    tauri::async_runtime::block_on(async {
+        let file = TestDatabase::new();
+        let mut db = file.open().await;
+        migrator(2).run(&mut db).await.unwrap();
+        let originals = seed(&mut db).await;
+        let before = history(&mut db).await;
+        db.close().await.unwrap();
+
+        let mut db = file.open().await;
+        let mut failing = migrator(3);
+        failing.migrations.to_mut()[2] = Migration::new(
+            3, "failed_study_migration".into(), tauri_plugin_sql::MigrationKind::Up.into(),
+            "CREATE TABLE study_areas (id TEXT); UPDATE persistence_test_records SET value='lost'; INSERT INTO missing_table VALUES (1);".into(), false
+        );
+        assert!(matches!(failing.run(&mut db).await, Err(MigrateError::ExecuteMigration(_, 3))));
+        db.close().await.unwrap();
+
+        let mut db = file.open().await;
+        assert_eq!(records(&mut db).await, originals);
+        assert_eq!(history(&mut db).await, before);
+        let count: (i64,) = sqlx::query_as("SELECT count(*) FROM sqlite_schema WHERE name='study_areas'").fetch_one(&mut db).await.unwrap();
+        assert_eq!(count.0, 0);
+        migrator(3).run(&mut db).await.unwrap();
+        integrity(&mut db).await;
+        db.close().await.unwrap();
+    });
+}

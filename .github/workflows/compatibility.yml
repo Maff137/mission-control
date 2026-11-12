@@ -2,7 +2,7 @@ name: Desktop compatibility
 
 on:
   push:
-    branches: [main, test/b6-platform-compatibility, test/native-runtime-acceptance]
+    branches: [main, test/b6-platform-compatibility, test/native-runtime-acceptance, feature/manual-study-sessions]
   pull_request:
   workflow_dispatch:
 

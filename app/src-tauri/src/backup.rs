@@ -85,6 +85,12 @@ pub fn migrator() -> sqlx::migrate::Migrator {
         ..sqlx::migrate::Migrator::DEFAULT
     }
 }
+pub fn legacy_migrator() -> sqlx::migrate::Migrator {
+    let mut old = migrator();
+    old.migrations.to_mut().truncate(2);
+    old
+}
+
 pub async fn open(path: &Path, readonly: bool, immutable: bool) -> Result<SqliteConnection> {
     Ok(SqliteConnection::connect_with(
         &SqliteConnectOptions::new()
@@ -170,15 +176,24 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
         .run(&mut expected)
         .await
         .map_err(|e| fail("internal_schema", e.to_string()))?;
-    // Reject all unknown schema objects BEFORE querying user tables or integrity checks.
-    if schema(&mut db).await? != schema(&mut expected).await? {
+    let mut legacy_expected = SqliteConnection::connect("sqlite::memory:").await?;
+    legacy_migrator()
+        .run(&mut legacy_expected)
+        .await
+        .map_err(|e| fail("internal_schema", e.to_string()))?;
+    // Validate against exactly the current or the previous B3 schema before reading user tables.
+    // B3 format-1 backups remain restorable; SQLx upgrades them at the next native startup.
+    let actual_schema = schema(&mut db).await?;
+    let is_current = actual_schema == schema(&mut expected).await?;
+    let is_legacy = actual_schema == schema(&mut legacy_expected).await?;
+    if !is_current && !is_legacy {
         return Err(fail(
             "incompatible_schema",
-            "The backup schema differs from this application. Unknown tables, triggers, views and constraints are rejected.",
+            "The backup schema differs from supported Mission Control versions. Unknown schema objects are rejected.",
         ));
     }
     let history: Vec<(i64, String, bool, Vec<u8>)> = sqlx::query_as("SELECT version, description, success, checksum FROM _sqlx_migrations ORDER BY version LIMIT 100").fetch_all(&mut db).await?;
-    let expected_history: Vec<_> = migrator()
+    let expected_history: Vec<_> = if is_current { migrator() } else { legacy_migrator() }
         .iter()
         .map(|m| {
             (
@@ -204,6 +219,26 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
             "Backup records must contain text fields with at most 1,000,000 combined UTF-8 bytes per record.",
         ));
     }
+    if is_current {
+        let invalid_study: (i64,) = sqlx::query_as(
+            "SELECT
+                (SELECT count(*) FROM study_areas WHERE typeof(id) != 'text' OR typeof(name) != 'text' OR typeof(color) != 'text' OR typeof(created_at) != 'text'
+                    OR length(CAST(id AS BLOB)) + length(CAST(name AS BLOB)) + length(CAST(color AS BLOB)) + length(CAST(created_at AS BLOB)) > 1000000)
+                +
+                (SELECT count(*) FROM study_sessions WHERE typeof(id) != 'text' OR typeof(area_id) != 'text' OR typeof(duration_minutes) != 'integer'
+                    OR typeof(study_date) != 'text' OR typeof(notes) != 'text' OR typeof(created_at) != 'text'
+                    OR length(CAST(id AS BLOB)) + length(CAST(area_id AS BLOB)) + length(CAST(study_date AS BLOB))
+                       + length(CAST(notes AS BLOB)) + length(CAST(created_at AS BLOB)) > 1000000)"
+        ).fetch_one(&mut db).await?;
+        if invalid_study.0 != 0 {
+            return Err(fail("invalid_study_records", "Backup study records have invalid types or exceed supported size limits."));
+        }
+        let dates: Vec<(String,)> = sqlx::query_as("SELECT DISTINCT study_date FROM study_sessions LIMIT 100000")
+            .fetch_all(&mut db).await?;
+        if dates.iter().any(|(date,)| !crate::study::valid_study_date(date)) {
+            return Err(fail("invalid_study_date", "Backup contains an invalid calendar date."));
+        }
+    }
     let integrity: Vec<(String,)> = sqlx::query_as("PRAGMA integrity_check(1)")
         .fetch_all(&mut db)
         .await?;
@@ -220,6 +255,7 @@ pub async fn validate(path: &Path, backup: bool) -> Result<()> {
     }
     db.close().await?;
     expected.close().await?;
+    legacy_expected.close().await?;
     Ok(())
 }
 fn sync_dir(path: &Path) -> Result<()> {

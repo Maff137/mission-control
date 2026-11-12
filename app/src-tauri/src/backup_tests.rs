@@ -469,3 +469,41 @@ fn b6_unicode_paths_and_no_clobber_publication_preserve_exact_data() {
         }
     });
 }
+
+#[test]
+fn previous_format_one_backup_can_restore_and_upgrade_to_study_schema() {
+    tauri::async_runtime::block_on(async {
+        let f = Fixture::new();
+        let old = f.store("legacy");
+        let mut legacy = SqliteConnection::connect_with(
+            &sqlx::sqlite::SqliteConnectOptions::new()
+                .filename(old.database()).create_if_missing(true)
+        ).await.unwrap();
+        legacy_migrator().run(&mut legacy).await.unwrap();
+        legacy.execute("INSERT INTO persistence_test_records (id, value, note) VALUES ('old', 'retained value', 'old note')").await.unwrap();
+        legacy.close().await.unwrap();
+
+        let exported = f.export("legacy");
+        assert!(old.export(Some(&exported)).await.unwrap());
+
+        let mut current = f.store("current");
+        database(&current, true).await;
+        assert!(current.stage(Some(&exported)).await.unwrap());
+        current.confirm().await.unwrap();
+        let directory = current.dir.clone();
+        drop(current);
+
+        let mut current = Store::acquire(directory).unwrap();
+        current.startup().await.unwrap();
+        let mut upgraded = open(&current.database(), false, false).await.unwrap();
+        migrator().run(&mut upgraded).await.unwrap();
+        let rows: Vec<(String, String, String)> = sqlx::query_as(
+            "SELECT id, value, note FROM persistence_test_records ORDER BY id"
+        ).fetch_all(&mut upgraded).await.unwrap();
+        assert_eq!(rows, vec![("old".into(), "retained value".into(), "old note".into())]);
+        let count: (i64,) = sqlx::query_as("SELECT count(*) FROM study_areas").fetch_one(&mut upgraded).await.unwrap();
+        assert_eq!(count.0, 0);
+        upgraded.close().await.unwrap();
+        current.finish_startup().unwrap();
+    });
+}

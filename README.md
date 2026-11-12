@@ -64,6 +64,12 @@ B5 adds isolated process-termination and filesystem-fault integration tests, plu
 
 No production-ready release or installation package is currently available.
 
+### Experimental study persistence (branch-only)
+
+The `feature/manual-study-sessions` branch adds a forward-only study migration (version 3), native commands for study-area and manual-session creation/listing, and format-1 backup validation for both the current and previous B3 schemas. Study areas have independently identified names/colors; manual sessions store an area reference, integer minutes, a local calendar date, optional free-form notes and creation timestamp. Existing prototype records are retained separately.
+
+**Status:** Backend implementation under validation, not merged or released. The user-facing study form, quick area creation, history cards, native app reopen acceptance and an installable personal release remain pending. All experiments must use disposable application identities and synthetic records, not `com.missioncontrol.desktop` storage.
+
 ## Approved MVP Roadmap
 
 **APPROVED:** MVP target **November 2, 2026**; primary development platform **macOS ARM64**. **PLANNED** sequence: study-data safety (real schema, forward-only migrations, isolation, backup compatibility and preservation tests) → core usability (configurable areas, manual sessions with date/duration, optional times/topic/notes, history, editing, daily totals and the approved 10-minute streak) → stable personal deployment → updater → MVP acceptance. These are targets, not completion guarantees; advanced features may be deferred to protect stability and the deadline.

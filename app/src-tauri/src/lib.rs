@@ -1,5 +1,6 @@
 mod backup;
 mod backup_commands;
+mod study;
 use tauri::Manager;
 
 fn migrations() -> Vec<tauri_plugin_sql::Migration> {
@@ -14,6 +15,12 @@ fn migrations() -> Vec<tauri_plugin_sql::Migration> {
             version: 2,
             description: "add_test_record_note",
             sql: include_str!("../migrations/0002_add_test_record_note.sql"),
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
+        tauri_plugin_sql::Migration {
+            version: 3,
+            description: "add_study_areas_and_sessions",
+            sql: include_str!("../migrations/0003_add_study_areas_and_sessions.sql"),
             kind: tauri_plugin_sql::MigrationKind::Up,
         },
     ]
@@ -75,6 +82,10 @@ pub fn run() {
             backup_commands::backup_status,
             backup_commands::read_records,
             backup_commands::insert_record,
+            study::list_study_areas,
+            study::create_study_area,
+            study::list_study_sessions,
+            study::create_study_session,
         ])
         .setup(|app| {
             if let Err(error) = initialize(app) {

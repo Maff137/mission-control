@@ -38,6 +38,16 @@ export function localStudyDate(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function displayStudyDate(value: string): string {
+  // A study date is a calendar value, independent of the device's UTC offset.
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
 export function validStudyDate(date: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const [year, month, day] = date.split("-").map(Number);

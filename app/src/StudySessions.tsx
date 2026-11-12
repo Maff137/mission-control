@@ -3,6 +3,7 @@ import { nativeError } from "./Backup";
 import Backup from "./Backup";
 import {
   localStudyDate,
+  displayStudyDate,
   nextAreaColor,
   studyPersistence,
   validateAreaName,
@@ -10,15 +11,6 @@ import {
   type StudyArea,
   type StudySession,
 } from "./studyPersistence";
-
-function displayDate(value: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(year, month - 1, day));
-}
 
 export default function StudySessions() {
   const [areas, setAreas] = useState<StudyArea[]>([]);
@@ -249,7 +241,7 @@ export default function StudySessions() {
                     <h3>{session.area_name}</h3>
                     <strong>{session.duration_minutes} min</strong>
                   </div>
-                  <time dateTime={session.study_date}>{displayDate(session.study_date)}</time>
+                  <time dateTime={session.study_date}>{displayStudyDate(session.study_date)}</time>
                   {session.notes && <p className="session-notes">{session.notes}</p>}
                 </div>
               </article>

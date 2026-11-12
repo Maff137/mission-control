@@ -11,6 +11,8 @@ pub struct StudyArea {
     created_at: String,
 }
 
+type StudySessionRow = (String, String, String, String, i64, String, String, String);
+
 #[derive(Serialize)]
 pub struct StudySession {
     id: String,
@@ -41,7 +43,7 @@ pub(crate) fn valid_study_date(value: &str) -> bool {
     if year == 0 {
         return false;
     }
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let leap = year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
     let days = match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
@@ -145,7 +147,7 @@ pub async fn list_study_sessions(
             "Restart the application; keep all database files.",
         ));
     };
-    let rows: Vec<(String, String, String, String, i64, String, String, String)> = sqlx::query_as(
+    let rows: Vec<StudySessionRow> = sqlx::query_as(
         "SELECT s.id, s.area_id, a.name, a.color, s.duration_minutes, s.study_date, s.notes, s.created_at
          FROM study_sessions s JOIN study_areas a ON a.id = s.area_id
          ORDER BY s.study_date DESC, s.created_at DESC, s.id DESC"
